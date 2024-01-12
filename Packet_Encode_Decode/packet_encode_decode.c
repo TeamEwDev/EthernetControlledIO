@@ -17,10 +17,9 @@ uint8_t Calculate_CRC(uint8_t *data, uint8_t length) {
 }
 
 // Function to decode the packet
-AppsPacket Decode_Packet(uint8_t *inputStream, uint8_t length) {
+uint8_t Decode_Packet(uint8_t *inputStream, uint8_t length, AppsPacket * appPacket) {
 
 	// Extract data length from the second byte
-	AppsPacket appPacket;
     uint8_t dataLengthInput = inputStream[DATA_LENGTH_IDX];
     uint8_t *data = &inputStream[DATA_IDX];
     uint8_t opcode = inputStream[OPCODE_IDX];
@@ -29,15 +28,21 @@ AppsPacket Decode_Packet(uint8_t *inputStream, uint8_t length) {
     uint8_t calculatedCRC;
 
     // Check if the packet starts with the correct SOF byte
-    if (length < MIN_FRAME_SIZE || inputStream[SOF_IDX] != PACKET_SOF) {
+    if (length < MIN_FRAME_SIZE) {
         printf("Invalid packet format. Unable to decode.\n");
-        return;
+        return PACKET_ERROR_INVALID_PAYLOAD_LENGTH;
+    }
+
+    if (inputStream[SOF_IDX] != PACKET_SOF)
+    {
+    	printf("Invalid SOF received");
+    	return PACKET_ERROR_INVALID_SOF;
     }
 
     // Check if the packet length is valid
     if (length < dataLengthInput + MIN_FRAME_SIZE) {
         printf("Invalid packet length. Unable to decode.\n");
-        return;
+        return PACKET_ERROR_INVALID_PAYLOAD_LENGTH;
     }
 
     // Extract CRC from the packet
@@ -49,13 +54,13 @@ AppsPacket Decode_Packet(uint8_t *inputStream, uint8_t length) {
     // Check if received CRC matches calculated CRC
     if (receivedCRC != calculatedCRC) {
         printf("CRC check failed. Unable to decode.\n");
-        return;
+        return PACKET_ERROR_INVALID_CRC;
     }
 
     // Check if the packet ends with the correct EOF byte
     if (inputStream[dataLengthInput + EOF_IDX] != PACKET_EOF) {
         printf("Invalid packet format. Unable to decode.\n");
-        return;
+        return PACKET_ERROR_INVALID_EOF;
     }
 
     // Display the decoded data
@@ -65,11 +70,11 @@ AppsPacket Decode_Packet(uint8_t *inputStream, uint8_t length) {
     }
     printf("\n");
 
-    appPacket.opcode     = opcode;
-    appPacket.dataLength = dataLengthInput;
-    appPacket.data       = data;
+    appPacket->opcode     = opcode;
+    appPacket->dataLength = dataLengthInput;
+    appPacket->data       = data;
 
-    return appPacket;
+    return PACKET_OK;
 }
 
 void Encode_Packet(uint8_t * packet, AppsPacket appPacket)

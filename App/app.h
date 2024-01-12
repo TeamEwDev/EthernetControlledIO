@@ -47,11 +47,17 @@ extern SPI_HandleTypeDef hspi1;
  *************************************************************/
 
 typedef enum {
-	APP_REJECTOR_WRITE,
-	APP_REJECTOR_READ,
-	APP_SEND_REJECTOR_STATUS,
-	APP_REJECTOR_WRITE_PULSE
+	APP_REJECTOR_WRITE_CMD,
+	APP_REJECTOR_READ_CMD,
+	APP_SEND_REJECTOR_STATUS_IND,
+	APP_REJECTOR_WRITE_PULSE_CMD,
+	APP_REJECTOR_CNF
 }APP_OPCODE;
+
+typedef enum {
+	APP_ERROR_CODE_OPCODE = 5,
+	APP_ERROR_CODE_INVALID_PAYLOAD
+}APP_ERROR_CODE;
 
 /*************************************************************
  *                   FUNCTION PROTOTYPES                     *
@@ -68,7 +74,9 @@ bool Init_W5500(void);
 void Start_Listening_To_TCP_Client(void);
 void App_Rejector_Write(bool state, uint8_t rejectorIdx);
 bool App_Rejector_Read(uint8_t rejectorIdx);
-void Process_Payload(AppsPacket appPacket);
+uint8_t Process_Payload(AppsPacket appPacket);
 uint8_t Get_Payload_Length(uint8_t opcode);
+uint8_t Validate_Packet(uint8_t status, AppsPacket appPacket, uint8_t recvLength);
+void Send_Confirmation(uint8_t errCode);
 
 #endif
