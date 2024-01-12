@@ -529,7 +529,7 @@ static void recv_tftp_packet(uint8_t *packet, uint32_t packet_len, uint32_t from
 	if(from_ip != get_server_ip()) {
 #ifdef __TFTP_DEBUG__
 		DBG_PRINT(ERROR_DBG, "[%s] Server IP faults\r\n", __func__);
-		DBG_PRINT(ERROR_DBG, "from IP : %08x, Server IP : %08x\r\n", from_ip, get_server_ip());
+		DBG_PRINT(ERROR_DBG, "from IP : %08x, Server IP : %08llx\r\n", from_ip, get_server_ip());
 #endif
 		return;
 	}

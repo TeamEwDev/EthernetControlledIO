@@ -26,28 +26,37 @@
 /*************************************************************
  *                   GLOBAL VARIABLES                        *
  *************************************************************/
-typedef enum {
-	SOF_IDX = 0,
-	OPCODE_IDX = 1,
-	DATA_LENGTH_IDX = 2,
-	DATA_IDX = 3,
-	EOF_IDX = 4,
-	MIN_FRAME_SIZE = 5,
-}PACKET_FRAME_IDX;
+typedef enum
+{
+    SOF_IDX = 0,
+    OPCODE_IDX = 1,
+    DATA_LENGTH_IDX = 2,
+    DATA_IDX = 3,
+    EOF_IDX = 4,
+    MIN_FRAME_SIZE = 5,
+} PACKET_FRAME_IDX;
 
-typedef struct {
-	uint8_t opcode;
-	uint8_t dataLength;
-	uint8_t * data;
-}AppsPacket;
+typedef struct
+{
+    uint8_t opcode;
+    uint8_t dataLength;
+    uint8_t *data;
+} AppsPacket;
 
+typedef enum
+{
+    RET_OK       = 0x00,
+    RET_ERROR    = 0x01,
+    RET_BUSY     = 0x02,
+    RET_TIMEOUT  = 0x03
+} RET_StatusTypeDef;
 /*************************************************************
  *                   FUNCTION PROTOTYPES                     *
  *************************************************************/
 
-AppsPacket Decode_Packet(uint8_t *inputStream, uint8_t length);
+RET_StatusTypeDef Decode_Packet(uint8_t *inputStream, uint8_t length, AppsPacket *appPacket);
 uint8_t Calculate_CRC(uint8_t *data, uint8_t length);
-void Encode_Packet(uint8_t * packet, AppsPacket appPacket);
+void Encode_Packet(uint8_t *packet, AppsPacket appPacket);
 uint8_t Get_Packet_Length(uint8_t dataLength);
 
 #endif
