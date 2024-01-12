@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "app.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -30,12 +31,6 @@
 #include "dhcp.h"
 #include "dns.h"
 
-#define DHCP_SOCKET     0
-#define DNS_SOCKET      1
-#define HTTP_SOCKET     2
-#define CLIENT_SOCKET	2	//tcp client socket 1
-#define LISTEN_PORT	    7 	//server port
-
 #if defined (__ICCARM__) || defined (__ARMCC_VERSION)
 #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
 #elif defined(__GNUC__)
@@ -44,17 +39,6 @@ set to 'Yes') calls __io_putchar() */
 #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
 #endif /* __ICCARM__ || __ARMCC_VERSION */
 
-wiz_NetInfo netInfo = {
-		.mac = { 0x00, 0x08, 0xdc, 0xab, 0xcd, 0xef },
-		.ip = { 192, 168, 1, 180 },
-		.sn = { 255, 255, 255, 0 },
-		.gw = { 192, 168, 1, 1 } };
-
-wiz_NetTimeout timeout = {
-		.retry_cnt = 3, 		//RCR = 3
-		.time_100us = 5000};    //500ms
-
-uint8_t buffer[8];		//client sends 8 bytes
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -89,172 +73,7 @@ static void MX_SPI1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void W5500_Select(void) {
-    HAL_GPIO_WritePin(SPI1_NSS_W5500_GPIO_Port, SPI1_NSS_W5500_Pin, GPIO_PIN_RESET);
-}
 
-void W5500_Unselect(void) {
-    HAL_GPIO_WritePin(SPI1_NSS_W5500_GPIO_Port, SPI1_NSS_W5500_Pin, GPIO_PIN_SET);
-}
-
-void W5500_ReadBuff(uint8_t* buff, uint16_t len) {
-    HAL_SPI_Receive(&hspi1, buff, len, HAL_MAX_DELAY);
-}
-
-void W5500_WriteBuff(uint8_t* buff, uint16_t len) {
-    HAL_SPI_Transmit(&hspi1, buff, len, HAL_MAX_DELAY);
-}
-
-uint8_t W5500_ReadByte(void) {
-    uint8_t byte;
-    W5500_ReadBuff(&byte, sizeof(byte));
-    return byte;
-}
-
-void W5500_WriteByte(uint8_t byte) {
-    W5500_WriteBuff(&byte, sizeof(byte));
-}
-
-bool NetworkInit_W5500() {
-	wiz_NetInfo tmpInfo;
-	wiz_NetTimeout tmpTimeout;
-	wizchip_setnetinfo(&netInfo);
-
-	//get network information
-	wizchip_getnetinfo(&tmpInfo);
-	printf("IP: %03d.%03d.%03d.%03d\nGW: %03d.%03d.%03d.%03d\nNet: %03d.%03d.%03d.%03d\nPort : %d\n",
-			tmpInfo.ip[0], tmpInfo.ip[1],tmpInfo.ip[2], tmpInfo.ip[3],
-			tmpInfo.gw[0], tmpInfo.gw[1], tmpInfo.gw[2], tmpInfo.gw[3],
-			tmpInfo.sn[0], tmpInfo.sn[1], tmpInfo.sn[2], tmpInfo.sn[3],
-			LISTEN_PORT);
-
-	if(tmpInfo.mac[0] != netInfo.mac[0] ||
-			tmpInfo.mac[1] != netInfo.mac[1] ||
-			tmpInfo.mac[2] != netInfo.mac[2] ||
-			tmpInfo.mac[3] != netInfo.mac[3])
-	{
-		printf("wizchip_getnetinfo failed.\n");
-		return false;
-	}
-
-	//set timeout
-	ctlnetwork(CN_SET_TIMEOUT,(void*)&timeout);
-	ctlnetwork(CN_GET_TIMEOUT, (void*)&tmpTimeout);
-
-	if(tmpTimeout.retry_cnt != timeout.retry_cnt || tmpTimeout.time_100us != timeout.time_100us)
-	{
-		printf("ctlnetwork(CN_SET_TIMEOUT) failed.\n");
-		return false;
-	}
-
-	return true;
-}
-
-bool Init_W5500() {
-    printf("\r\ninit() called!\r\n");
-
-	HAL_GPIO_WritePin(RESET_W5500_GPIO_Port, RESET_W5500_Pin, GPIO_PIN_RESET);
-	HAL_Delay(500);
-	HAL_GPIO_WritePin(RESET_W5500_GPIO_Port, RESET_W5500_Pin, GPIO_PIN_SET);
-	HAL_Delay(500);
-    printf("Registering W5500 callbacks...\r\n");
-    reg_wizchip_cs_cbfunc(W5500_Select, W5500_Unselect);
-    reg_wizchip_spi_cbfunc(W5500_ReadByte, W5500_WriteByte);
-    reg_wizchip_spiburst_cbfunc(W5500_ReadBuff, W5500_WriteBuff);
-
-    printf("Calling wizchip_init()...\r\n");
-	uint8_t version = getVERSIONR();
-	if(version != 0x04)
-	{
-		printf("getVERSIONR returns wrong version!\n");
-		return false;
-	}
-	wiz_PhyConf phyConf;
-	wizphy_getphystat(&phyConf);
-	printf("PHY conf.by = {%d}, conf.mode={%d}, conf.speed={%d}, conf.duplex={%d}\n",
-			phyConf.by, phyConf.mode, phyConf.speed, phyConf.duplex);
-}
-
-void Start_Listening_To_TCP_Client() {
-	int32_t ret;
-	uint8_t remoteIP[4];
-	uint16_t remotePort;
-	while(1) {
-		uint8_t ret = socket(CLIENT_SOCKET, Sn_MR_TCP, LISTEN_PORT, SF_TCP_NODELAY);
-
-		if (ret < 0) {
-			printf("socket failed{%ld}.\n", ret);
-			close(CLIENT_SOCKET);
-			HAL_Delay(100);
-			continue;
-		}
-
-		//check initialization
-		while(getSn_SR(CLIENT_SOCKET) != SOCK_INIT)
-		{
-			HAL_Delay(10);
-		}
-
-		printf("listening....\n");
-		ret = listen(CLIENT_SOCKET);
-		if (ret < 0) {
-			printf("listen failed{%ld}.\n", ret);
-			close(CLIENT_SOCKET);
-			HAL_Delay(100);
-			continue;
-		}
-
-		//check listening status
-		while(getSn_SR(CLIENT_SOCKET) == SOCK_LISTEN)
-		{
-			HAL_Delay(10);
-		}
-
-		if(getSn_SR(CLIENT_SOCKET) == SOCK_ESTABLISHED)
-		{
-			//client accepted
-			printf("accepted....\n");
-
-			//get remote information
-			getsockopt(CLIENT_SOCKET, SO_DESTIP, remoteIP);
-			getsockopt(CLIENT_SOCKET, SO_DESTPORT, (uint8_t*)&remotePort);
-			printf("remote IP[PORT]:%03d.%03d.%03d.%03d[%05d]\n",
-					remoteIP[0], remoteIP[1], remoteIP[2], remoteIP[3], remotePort);
-
-			//receive data
-			ret = recv(CLIENT_SOCKET, buffer, sizeof(buffer));
-			if (ret < 0) {
-				printf("recv failed.{%ld}\n", ret);
-				close(CLIENT_SOCKET); //unexpected close
-				continue;
-			}
-
-			printf("received...\n %s", buffer);
-
-			//send back data
-			ret = send(CLIENT_SOCKET, buffer, sizeof(buffer));
-			if (ret < 0) {
-				printf("send failed{%ld}.\n", ret);
-				close(CLIENT_SOCKET); //unexpected close
-				continue;
-			}
-
-			printf("sent back...\n");
-		}
-		else
-		{
-			printf("getSn_SR() != SOCKET_ESTABLISHED.\n");
-		}
-
-		//close socket
-		close(CLIENT_SOCKET);
-		printf("closed...\n");
-	}
-}
-
-void loop() {
-	HAL_Delay(1000);
-}
 /* USER CODE END 0 */
 
 /**
