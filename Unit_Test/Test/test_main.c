@@ -12,6 +12,7 @@
 #include "Basic.h"
 #include "stdint.h"
 #include "stm32f4xx_hal.h"
+#include "ethernet_io_test.h"
 
 int unit_test_case(void);
 
@@ -44,6 +45,7 @@ int unit_test_case(void)
     }
     else
     {
+        Ethernet_Io_Test_Add();
         CU_basic_set_mode(mode);
         printf("\nTests completed with return value %d. Test cnt:%ld\r\n",
                CU_basic_run_tests(), TestCnt++);

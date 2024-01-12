@@ -8,6 +8,7 @@
 #ifndef TEST_TEST_MAIN_H_
 #define TEST_TEST_MAIN_H_
 
+void unitTestCases(void *argument);
 int unit_test_case();
 
 #endif /* TEST_TEST_MAIN_H_ */

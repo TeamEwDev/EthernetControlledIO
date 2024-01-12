@@ -109,7 +109,7 @@ int main(void)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 #ifdef UNIT_TEST_EN
-  unit_test_case();
+  unitTestCases(NULL);
 #endif
   Init_W5500();
   NetworkInit_W5500();

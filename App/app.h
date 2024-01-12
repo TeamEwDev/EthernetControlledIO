@@ -36,6 +36,9 @@
 #define NUM_REJECTORS   1  // This parameter is configurable
 #define REJECTOR_ON     1
 #define REJECTOR_OFF    0
+#define REJECTOR_DELAY_ADDR    (FLASH_END - 3) // This is temporary . To use FS for more rejectors
+#define REJECTOR_DELAY_MS_DEFAULT      10
+#define APP_REJECTOR_DELAY_PAYLOAD_LENGTH   5
 /*************************************************************
  *                   GLOBAL VARIABLES                        *
  *************************************************************/
@@ -51,6 +54,7 @@ typedef enum
     APP_REJECTOR_READ_CMD,
     APP_SEND_REJECTOR_STATUS_IND,
     APP_REJECTOR_WRITE_PULSE_CMD,
+    APP_REJECTOR_DELAY_WRITE_CMD,
     APP_REJECTOR_CNF
 } APP_OPCODE;
 
@@ -88,5 +92,7 @@ uint8_t Get_Payload_Length(uint8_t opcode);
 uint8_t Validate_Packet(uint8_t status, AppsPacket appPacket, uint8_t recvLength);
 void Send_Confirmation(uint8_t errCode);
 RET_StatusTypeDef Send_Data_To_TCP_Client(uint8_t *data, uint32_t dataLen);
+void App_Save_Rejector_Delay_Ms(uint32_t delayMs);
+uint32_t App_Get_Rejector_Delay_Ms(void);
 
 #endif
