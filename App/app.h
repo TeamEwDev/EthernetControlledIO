@@ -45,14 +45,28 @@ extern SPI_HandleTypeDef hspi1;
  *                        ENUM                               *
  *************************************************************/
 
-typedef enum 
+typedef enum
 {
-	APP_REJECTOR_WRITE_CMD,
-	APP_REJECTOR_READ_CMD,
-	APP_SEND_REJECTOR_STATUS_IND,
-	APP_REJECTOR_WRITE_PULSE_CMD,
-	APP_REJECTOR_CNF
-}APP_OPCODE;
+    APP_REJECTOR_WRITE_CMD,
+    APP_REJECTOR_READ_CMD,
+    APP_SEND_REJECTOR_STATUS_IND,
+    APP_REJECTOR_WRITE_PULSE_CMD,
+    APP_REJECTOR_CNF
+} APP_OPCODE;
+
+typedef enum
+{
+    APP_ERROR_INVALID_OPCODE = 5,
+    APP_ERROR_INVALID_PAYLOAD
+} APP_ERROR_CODE;
+
+typedef enum
+{
+    RET_OK       = 0x00,
+    RET_ERROR    = 0x01,
+    RET_BUSY     = 0x02,
+    RET_TIMEOUT  = 0x03
+} RET_StatusTypeDef;
 
 /*************************************************************
  *                   FUNCTION PROTOTYPES                     *

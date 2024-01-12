@@ -19,10 +19,10 @@ uint8_t Calculate_CRC(uint8_t *data, uint8_t length)
 }
 
 // Function to decode the packet
-uint8_t Decode_Packet(uint8_t *inputStream, uint8_t length, AppsPacket * appPacket) {
+PACKET_ERROR_CODES Decode_Packet(uint8_t *inputStream, uint8_t length, AppsPacket *appPacket)
+{
 
-	// Extract data length from the second byte
-	AppsPacket appPacket;
+    // Extract data length from the second byte
     uint8_t dataLengthInput = inputStream[DATA_LENGTH_IDX];
     uint8_t *data = &inputStream[DATA_IDX];
     uint8_t opcode = inputStream[OPCODE_IDX];
@@ -31,15 +31,16 @@ uint8_t Decode_Packet(uint8_t *inputStream, uint8_t length, AppsPacket * appPack
     uint8_t calculatedCRC;
 
     // Check if the packet starts with the correct SOF byte
-    if (length < MIN_FRAME_SIZE) {
+    if (length < MIN_FRAME_SIZE)
+    {
         printf("Invalid packet format. Unable to decode.\n");
         return PACKET_ERROR_INVALID_PAYLOAD_LENGTH;
     }
 
     if (inputStream[SOF_IDX] != PACKET_SOF)
     {
-    	printf("Invalid SOF received");
-    	return PACKET_ERROR_INVALID_SOF;
+        printf("Invalid SOF received");
+        return PACKET_ERROR_INVALID_SOF;
     }
 
     // Check if the packet length is valid

@@ -158,8 +158,6 @@ void Start_Listening_To_TCP_Client(void)
     uint8_t ret;
     uint8_t remoteIP[4];
     uint16_t remotePort;
-    uint8_t payloadLength;
-    uint8_t expectedPacketLength;
     AppsPacket appPacket;
 
     while (1)
@@ -216,101 +214,104 @@ void Start_Listening_To_TCP_Client(void)
                 continue;
             }
 
-			printf("received...\n %s", buffer);
+            printf("received...\n %s", buffer);
 
-			AppsPacket appPacket;
-			uint8_t errCode = Decode_Packet(buffer, ret, &appPacket);
+            uint8_t errCode = Decode_Packet(buffer, ret, &appPacket);
 
-			errCode = Validate_Packet(errCode, appPacket, ret);
+            errCode = Validate_Packet(errCode, appPacket, ret);
 
-
-			if (errCode == PACKET_OK)
-			{
+            if (errCode == PACKET_OK)
+            {
                 printf("decoded packet...\n opcode - %d \n dataLength - %d \n Data - ",
-						appPacket.opcode,
-						appPacket.dataLength);
+                       appPacket.opcode,
+                       appPacket.dataLength);
 
-			    for (uint8_t byteIdx = 0; byteIdx < appPacket.dataLength; byteIdx++)
-			    {
-				    printf("0x%x ", appPacket.data[byteIdx]);
-			    }
+                for (uint8_t byteIdx = 0; byteIdx < appPacket.dataLength; byteIdx++)
+                {
+                    printf("0x%x ", appPacket.data[byteIdx]);
+                }
 
-			    printf("\n");
-			    errCode = Process_Payload(appPacket);
+                printf("\n");
+                errCode = Process_Payload(appPacket);
             }
 
             Send_Confirmation(errCode);
-		}
-		else
-		{
-			printf("getSn_SR() != SOCKET_ESTABLISHED.\n");
-		}
-	}
-	//close socket
-	printf("closed...\n");
-	close(CLIENT_SOCKET);
+        }
+        else
+        {
+            printf("getSn_SR() != SOCKET_ESTABLISHED.\n");
+        }
+    }
+    //close socket
+    printf("closed...\n");
+    close(CLIENT_SOCKET);
 }
 
 uint8_t Validate_Packet(uint8_t status, AppsPacket appPacket, uint8_t recvLength)
 {
-	if (status == PACKET_OK)
-	{
-		uint8_t payloadLength = Get_Payload_Length(appPacket.opcode);
-		uint8_t expectedPacketLength = Get_Packet_Length(payloadLength);
+    uint8_t payloadLength;
+    uint8_t expectedPacketLength;
 
-		if (recvLength != expectedPacketLength)
-		{
-			printf("Invalid packet length received : Expected - %d, Received - %d",expectedPacketLength, recvLength);
-			return PACKET_ERROR_INVALID_PAYLOAD_LENGTH;
-		}
+    if (status == PACKET_OK)
+    {
+        payloadLength = Get_Payload_Length(appPacket.opcode);
+        expectedPacketLength = Get_Packet_Length(payloadLength);
 
-		if (appPacket.opcode < APP_REJECTOR_WRITE_CMD ||
-			appPacket.opcode > APP_REJECTOR_CNF ||
-			appPacket.opcode == APP_REJECTOR_CNF ||
-			appPacket.opcode == APP_SEND_REJECTOR_STATUS_IND)
-		{
-			printf("Invalid opcode received");
-			return APP_ERROR_CODE_OPCODE;
-		}
-	}
+        if (recvLength != expectedPacketLength)
+        {
+            printf("Invalid packet length received : Expected - %d, Received - %d", expectedPacketLength, recvLength);
+            return PACKET_ERROR_INVALID_PAYLOAD_LENGTH;
+        }
 
-	return status;
+        if (appPacket.opcode < APP_REJECTOR_WRITE_CMD ||
+            appPacket.opcode > APP_REJECTOR_CNF ||
+            appPacket.opcode == APP_REJECTOR_CNF ||
+            appPacket.opcode == APP_SEND_REJECTOR_STATUS_IND)
+        {
+            printf("Invalid opcode received");
+            return APP_ERROR_INVALID_OPCODE;
+        }
+    }
+
+    return status;
 }
 
 void Send_Confirmation(uint8_t errCode)
 {
-	AppsPacket appPacketCnf;
-	appPacketCnf.opcode = APP_REJECTOR_CNF;
-	appPacketCnf.data = &errCode;
-	appPacketCnf.dataLength = 0x1;
+    AppsPacket appPacketCnf;
+    uint8_t appPacketCnfLength;
 
-	uint8_t appPacketCnfLength = Get_Packet_Length(appPacketCnf.dataLength);
-	uint8_t appPacketCnfRaw[appPacketCnfLength];
+    appPacketCnf.opcode = APP_REJECTOR_CNF;
+    appPacketCnf.data = &errCode;
+    appPacketCnf.dataLength = 0x1;
 
-	Encode_Packet(appPacketCnfRaw, appPacketCnf);
+    appPacketCnfLength = Get_Packet_Length(appPacketCnf.dataLength);
+    uint8_t appPacketCnfRaw[appPacketCnfLength];
 
-	send(CLIENT_SOCKET, appPacketCnfRaw, sizeof(appPacketCnfRaw));
+    Encode_Packet(appPacketCnfRaw, appPacketCnf);
+
+    Send_Data_To_TCP_Client(appPacketCnfRaw, sizeof(appPacketCnfRaw));
 }
 
 uint8_t Get_Payload_Length(uint8_t opcode)
 {
-	switch (opcode)
-	{
-		case APP_REJECTOR_WRITE_CMD:
-		case APP_REJECTOR_READ_CMD:
-		    {
-			    return (NUM_REJECTORS / 8) + 1;
-		    }
-		case APP_REJECTOR_WRITE_PULSE_CMD:
-		    {
-			    return NUM_REJECTORS;
-		    }
-		default:
-		    {
-			    printf("Invalid opcode received");
-			    return 0;
-		    }
-	}
+    switch (opcode)
+    {
+        case APP_REJECTOR_WRITE_CMD:
+        case APP_REJECTOR_READ_CMD:
+            {
+                return (NUM_REJECTORS / 8) + 1;
+            }
+        case APP_REJECTOR_WRITE_PULSE_CMD:
+            {
+                return NUM_REJECTORS;
+            }
+        default:
+            {
+                printf("Invalid opcode received");
+                return 0;
+            }
+    }
 }
 
 uint8_t Process_Payload(AppsPacket appPacket)
@@ -324,79 +325,87 @@ uint8_t Process_Payload(AppsPacket appPacket)
     uint8_t delay_ms;
     AppsPacket rejectorStatus;
 
-	switch(appPacket.opcode)
-	{
+    switch (appPacket.opcode)
+    {
         case APP_REJECTOR_WRITE_CMD:
-		    {
-			    printf("Opcode - APP_REJECTOR_WRITE\n");
-			    for (uint8_t byteIdx=0; byteIdx < appPacket.dataLength; byteIdx++)
-			    {
-				    dataByte = appPacket.data[byteIdx];
+            {
+                printf("Opcode - APP_REJECTOR_WRITE\n");
+                for (uint8_t byteIdx = 0; byteIdx < appPacket.dataLength; byteIdx++)
+                {
+                    dataByte = appPacket.data[byteIdx];
 
-				    for (uint8_t bitIdx = 0; bitIdx < 8; bitIdx++)
-				    {
-					    state = ((dataByte & (0x80 >> bitIdx)) != 0);
-					    rejector = (byteIdx*8) + bitIdx;
-					    App_Rejector_Write(state, rejector);
-				    }
-			    }
-			    break;
-		        }
-		    case APP_REJECTOR_READ_CMD:
-		        {
-			        printf("Opcode - APP_REJECTOR_READ\n");
-			        packetLength = Get_Packet_Length(appPacket.dataLength);
-			        rejectorStatusPkt[packetLength];
-
-                    for (uint8_t byteIdx = 0; byteIdx < appPacket.dataLength; byteIdx++)
+                    for (uint8_t bitIdx = 0; bitIdx < 8; bitIdx++)
                     {
-                        dataByte = appPacket.data[byteIdx];
-                        statusByte = 0x0;
+                        state = ((dataByte & (0x80 >> bitIdx)) != 0);
+                        rejector = (byteIdx * 8) + bitIdx;
 
-                        for (uint8_t bitIdx = 0; bitIdx < 8; bitIdx++)
+                        if (state == App_Rejector_Read(rejector))
                         {
-                            state = ((dataByte & (0x1 << bitIdx)) != 0);
-                            rejector = (byteIdx * 8) + bitIdx;
-
-                            if (state)
-                            {
-                                statusByte = statusByte | (App_Rejector_Read(rejector) << (8 - bitIdx));
-                            }
+                            printf("Invalid payload - Rejector already in same state\n");
+                            return APP_ERROR_INVALID_PAYLOAD;
                         }
-                        packetPayload[byteIdx] = statusByte;
+
+                        App_Rejector_Write(rejector, state);
                     }
+                }
+                break;
+            }
+        case APP_REJECTOR_READ_CMD:
+            {
+                printf("Opcode - APP_REJECTOR_READ\n");
+                packetLength = Get_Packet_Length(appPacket.dataLength);
+                uint8_t rejectorStatusPkt[packetLength];
 
-			    rejectorStatus.data = (uint8_t *)packetPayload;
-			    rejectorStatus.dataLength = appPacket.dataLength;
-			    rejectorStatus.opcode = APP_SEND_REJECTOR_STATUS_IND;
+                for (uint8_t byteIdx = 0; byteIdx < appPacket.dataLength; byteIdx++)
+                {
+                    dataByte = appPacket.data[byteIdx];
+                    statusByte = 0x0;
 
-			    Encode_Packet(rejectorStatusPkt, rejectorStatus);
+                    for (uint8_t bitIdx = 0; bitIdx < 8; bitIdx++)
+                    {
+                        state = ((dataByte & (0x1 << bitIdx)) != 0);
+                        rejector = (byteIdx * 8) + bitIdx;
 
-			    Send_Data_To_TCP_Client(rejectorStatusPkt, sizeof(rejectorStatusPkt));
-			    break;
-		    }
-		case APP_REJECTOR_WRITE_PULSE_CMD:
-		    {
-			    printf("Opcode - APP_REJECTOR_PULSE\n");
-			    for (uint8_t byteIdx=0; byteIdx < appPacket.dataLength; byteIdx++)
-			    {
-				    delay_ms = appPacket.data[byteIdx];
+                        if (state)
+                        {
+                            statusByte = statusByte | (App_Rejector_Read(rejector) << (8 - bitIdx));
+                        }
+                    }
+                    packetPayload[byteIdx] = statusByte;
+                }
 
-				    if (delay_ms > 0)
-				    {
-					    App_Rejector_Write(REJECTOR_ON, byteIdx);
-					    HAL_Delay(delay_ms * 1000);
-					    App_Rejector_Write(REJECTOR_OFF, byteIdx);
-				    }
-			    }
-			    break;
-		}
-		default:
-		{
-			printf("Invalid opcode received");
-			return;
-		}
-	}
+                rejectorStatus.data = (uint8_t *)packetPayload;
+                rejectorStatus.dataLength = appPacket.dataLength;
+                rejectorStatus.opcode = APP_SEND_REJECTOR_STATUS_IND;
+
+                Encode_Packet(rejectorStatusPkt, rejectorStatus);
+
+                Send_Data_To_TCP_Client(rejectorStatusPkt, sizeof(rejectorStatusPkt));
+                break;
+            }
+        case APP_REJECTOR_WRITE_PULSE_CMD:
+            {
+                printf("Opcode - APP_REJECTOR_WRITE_PULSE_CMD\n");
+                for (uint8_t byteIdx = 0; byteIdx < appPacket.dataLength; byteIdx++)
+                {
+                    delay_ms = appPacket.data[byteIdx];
+
+                    if (delay_ms > 0)
+                    {
+                        App_Rejector_Write(byteIdx, REJECTOR_ON);
+                        HAL_Delay(delay_ms);
+                        App_Rejector_Write(byteIdx, REJECTOR_OFF);
+                    }
+                }
+                break;
+            }
+        default:
+            {
+                /* DO NOTHING */
+            }
+    }
+
+    return PACKET_OK;
 }
 
 RET_StatusTypeDef Send_Data_To_TCP_Client(uint8_t *data, uint32_t dataLen)
@@ -404,6 +413,7 @@ RET_StatusTypeDef Send_Data_To_TCP_Client(uint8_t *data, uint32_t dataLen)
     if (getSn_SR(CLIENT_SOCKET) == SOCK_ESTABLISHED)
     {
         send(CLIENT_SOCKET, data, dataLen);
+        HAL_Delay(100);
         return RET_OK;
     }
     return RET_ERROR;
