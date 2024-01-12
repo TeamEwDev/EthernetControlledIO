@@ -11,6 +11,7 @@
 
 #include "Basic.h"
 #include "stdint.h"
+#include "stm32f4xx_hal.h"
 
 int unit_test_case(void);
 
@@ -22,7 +23,7 @@ void unitTestCases(void *argument)
     for (;;)
     {
         unit_test_case();
-        osDelay(1);
+        HAL_Delay(1);
 
     }
     /* USER CODE END unitTestCases */

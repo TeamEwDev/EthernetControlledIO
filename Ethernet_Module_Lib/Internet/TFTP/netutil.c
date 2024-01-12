@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "netutil.h"
+#include <stdint.h>
 
 /**
  * Convert a 32bit Address into a Dotted Decimal Format string.
@@ -13,7 +14,7 @@ int8_t* inet_ntoa(uint32_t addr)
 {
 	static int8_t addr_str[16];
 	memset(addr_str,0,16);
-	sprintf((char*)addr_str,"%d.%d.%d.%d",(int32_t)(addr>>24 & 0xFF),(int32_t)(addr>>16 & 0xFF),(int32_t)(addr>>8 & 0xFF),(int32_t)(addr & 0xFF));
+	sprintf((char*)addr_str,"%ld.%ld.%ld.%ld",(int32_t)(addr>>24 & 0xFF),(int32_t)(addr>>16 & 0xFF),(int32_t)(addr>>8 & 0xFF),(int32_t)(addr & 0xFF));
 	return addr_str;
 }
 
@@ -28,7 +29,7 @@ int8_t* inet_ntoa_pad(uint32_t addr)
 {
 	static int8_t addr_str[16];
 	memset(addr_str,0,16);
-	sprintf((char*)addr_str,"%03d.%03d.%03d.%03d",(int32_t)(addr>>24 & 0xFF),(int32_t)(addr>>16 & 0xFF),(int32_t)(addr>>8 & 0xFF),(int32_t)(addr & 0xFF));
+	sprintf((char*)addr_str,"%03ld.%03ld.%03ld.%03ld",(int32_t)(addr>>24 & 0xFF),(int32_t)(addr>>16 & 0xFF),(int32_t)(addr>>8 & 0xFF),(int32_t)(addr & 0xFF));
 	return addr_str;
 }
 

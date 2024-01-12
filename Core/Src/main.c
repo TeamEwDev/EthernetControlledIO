@@ -26,13 +26,11 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdbool.h>
-#include <ctype.h>
-#include "socket.h"
-#include "dhcp.h"
-#include "dns.h"
+
 #ifdef UNIT_TEST_EN
 #include "test_main.h"
 #endif
+#include "usbd_cdc_if.h"
 
 #if defined (__ICCARM__) || defined (__ARMCC_VERSION)
 #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
@@ -111,7 +109,7 @@ int main(void)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 #ifdef UNIT_TEST_EN
-  unitTestCases();
+  unit_test_case();
 #endif
   Init_W5500();
   NetworkInit_W5500();

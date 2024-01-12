@@ -726,7 +726,7 @@ void ipToByteArray(int8_t *ip, uint8_t *pDes)
 		if ( buff[i]=='.' )		buff[i] = ' ';
 	}
 
-	sscanf((char const*)buff, "%u %u %u %u", &ip1, &ip2, &ip3, &ip4);
+	sscanf((char const*)buff, "%lu %lu %lu %lu", &ip1, &ip2, &ip3, &ip4);
 	pDes[0] = ip1; pDes[1] = ip2; pDes[2] = ip3; pDes[3] = ip4;
 }
 
