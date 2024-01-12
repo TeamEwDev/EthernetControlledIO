@@ -189,14 +189,13 @@ void Start_Listening_To_TCP_Client(void) {
 
 			//receive data
 			ret = recv(CLIENT_SOCKET, buffer, sizeof(buffer));
-			if (ret < 0) {
+			if (ret < SOCKERR_SOCKSTATUS) {
 				printf("recv failed.{%d}\n", ret);
 				close(CLIENT_SOCKET); //unexpected close
 				continue;
 			}
 
 			printf("received...\n %s", buffer);
-
 			AppsPacket appPacket = Decode_Packet(buffer, ret);
 
 			uint8_t payloadLength = Get_Payload_Length(appPacket.opcode);
@@ -224,11 +223,10 @@ void Start_Listening_To_TCP_Client(void) {
 		{
 			printf("getSn_SR() != SOCKET_ESTABLISHED.\n");
 		}
-
-		//close socket
-		close(CLIENT_SOCKET);
-		printf("closed...\n");
 	}
+	//close socket
+	printf("closed...\n");
+	close(CLIENT_SOCKET);
 }
 
 uint8_t Get_Payload_Length(uint8_t opcode)

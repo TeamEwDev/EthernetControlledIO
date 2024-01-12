@@ -30,6 +30,9 @@
 #include "socket.h"
 #include "dhcp.h"
 #include "dns.h"
+#ifdef UNIT_TEST_EN
+#include "test_main.h"
+#endif
 
 #if defined (__ICCARM__) || defined (__ARMCC_VERSION)
 #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
@@ -107,6 +110,9 @@ int main(void)
   MX_SPI1_Init();
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
+#ifdef UNIT_TEST_EN
+  unitTestCases();
+#endif
   Init_W5500();
   NetworkInit_W5500();
   Start_Listening_To_TCP_Client();
