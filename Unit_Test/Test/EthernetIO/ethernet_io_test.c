@@ -66,7 +66,7 @@ void Process_Payload_Rejector_Pulse_Test(void)
 {
     AppsPacket appPacket;
     uint8_t dataRaw[1] = {0x80};
-    uint8_t rejectorDelay = App_Get_Rejector_Delay_Ms(0x0);
+    uint32_t rejectorDelay = App_Get_Rejector_Delay_Ms(0x0);
 
     appPacket.opcode = APP_REJECTOR_WRITE_PULSE_CMD;
     appPacket.dataLength = 0x1;

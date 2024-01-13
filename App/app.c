@@ -8,6 +8,11 @@
 #include "app.h"
 #include "stm32f4xx_hal_flash.h"
 #include "swtimer.h"
+#include "stm32f4xx_hal_flash_ex.h"
+
+uint32_t RejectorDelayMs[NUM_REJECTORS];
+
+FLASH_EraseInitTypeDef EraseInitStruct;
 
 wiz_NetInfo netInfo =
 {
@@ -142,6 +147,11 @@ bool NetworkInit_W5500(void)
 
 bool Init_W5500(void)
 {
+    for (uint8_t rejectorIdx = 0; rejectorIdx < NUM_REJECTORS; rejectorIdx++)
+    {
+        RejectorDelayMs[rejectorIdx] = REJECTOR_DELAY_MS_DEFAULT;
+    }
+
     uint32_t rejectorDelayMs = 0;
 
     printf("\r\ninit() called!\r\n");
@@ -167,6 +177,10 @@ bool Init_W5500(void)
     printf("PHY conf.by = {%d}, conf.mode={%d}, conf.speed={%d}, conf.duplex={%d}\n",
            phyConf.by, phyConf.mode, phyConf.speed, phyConf.duplex);
 
+    EraseInitStruct.TypeErase   = FLASH_TYPEERASE_SECTORS;
+    EraseInitStruct.Sector      = 6U;
+    EraseInitStruct.NbSectors   = 1;
+    EraseInitStruct.VoltageRange = FLASH_VOLTAGE_RANGE_4;
     for (uint8_t rejectorIdx = 0; rejectorIdx < NUM_REJECTORS; rejectorIdx++)
     {
         RejectorStatus[rejectorIdx] = 0x0;
@@ -176,6 +190,10 @@ bool Init_W5500(void)
             rejectorDelayMs == 0xFFFFFFFF)
         {
             App_Save_Rejector_Delay_Ms(REJECTOR_DELAY_MS_DEFAULT, rejectorIdx);
+        }
+        else
+        {
+            RejectorDelayMs[rejectorIdx] = rejectorDelayMs;
         }
     }
 
@@ -342,7 +360,6 @@ uint8_t Get_Payload_Length(uint8_t opcode)
     switch (opcode)
     {
         case APP_REJECTOR_WRITE_CMD:
-        case APP_REJECTOR_READ_CMD:
         case APP_SEND_REJECTOR_STATUS_IND:
             {
                 return (NUM_REJECTORS / 8) + 1;
@@ -354,6 +371,10 @@ uint8_t Get_Payload_Length(uint8_t opcode)
         case APP_REJECTOR_DELAY_WRITE_CMD:
             {
                 return APP_REJECTOR_DELAY_PAYLOAD_LENGTH;
+            }
+        case APP_REJECTOR_READ_CMD:
+            {
+                return 0;
             }
         default:
             {
@@ -369,7 +390,7 @@ uint8_t Process_Payload(AppsPacket appPacket)
     bool state = false;
     uint8_t rejector = 0;
     uint8_t dataByte = 0;
-    uint8_t delay_ms;
+    uint32_t delay_ms;
     uint32_t rejectorDelayMs;
 
     switch (appPacket.opcode)
@@ -422,7 +443,7 @@ uint8_t Process_Payload(AppsPacket appPacket)
                         state = ((dataByte & (0x80 >> bitIdx)) != 0);
                         rejector = (byteIdx * 8) + bitIdx;
 
-                        delay_ms = App_Get_Rejector_Delay_Ms(rejector);
+                        delay_ms = RejectorDelayMs[rejector];
 
                         if (delay_ms > 0 && state)
                         {
@@ -431,6 +452,7 @@ uint8_t Process_Payload(AppsPacket appPacket)
                             {
                                 Timer_Start(&rejectorPluseSWTimer, delay_ms, rejector);
                                 App_Rejector_Write(rejector, REJECTOR_ON);
+                                Send_Rejector_Status();
                             }
                             else
                             {
@@ -524,8 +546,11 @@ RET_StatusTypeDef Send_Data_To_TCP_Client(uint8_t *data, uint32_t dataLen)
 void App_Save_Rejector_Delay_Ms(uint32_t delayMs, uint8_t rejectorIdx)
 {
     HAL_FLASH_Unlock();
+    HAL_FLASHEx_Erase(&EraseInitStruct, 0);
     HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, REJECTOR_DELAY_ADDR(rejectorIdx), delayMs);
     HAL_FLASH_Lock();
+
+    RejectorDelayMs[rejectorIdx] = delayMs;
 }
 
 uint32_t App_Get_Rejector_Delay_Ms(uint8_t rejectorIdx)
