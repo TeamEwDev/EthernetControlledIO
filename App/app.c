@@ -8,8 +8,6 @@
 #include "app.h"
 #include "stm32f4xx_hal_flash.h"
 
-uint32_t RejectorDelayMs = REJECTOR_DELAY_MS_DEFAULT;
-
 wiz_NetInfo netInfo =
 {
     .mac = { 0x00, 0x08, 0xdc, 0xab, 0xcd, 0xef },
@@ -25,6 +23,8 @@ wiz_NetTimeout timeout =
 };    //500ms
 
 uint8_t buffer[16];      //client sends 8 bytes
+
+uint8_t RejectorStatus[NUM_REJECTORS];
 
 void W5500_Select(void)
 {
@@ -155,12 +155,16 @@ bool Init_W5500(void)
     printf("PHY conf.by = {%d}, conf.mode={%d}, conf.speed={%d}, conf.duplex={%d}\n",
            phyConf.by, phyConf.mode, phyConf.speed, phyConf.duplex);
 
-
-    rejectorDelayMs = App_Get_Rejector_Delay_Ms();
-    if (rejectorDelayMs != 0x00000000 ||
-        rejectorDelayMs != 0xFFFFFFFF)
+    for (uint8_t rejectorIdx = 0; rejectorIdx < NUM_REJECTORS; rejectorIdx++)
     {
-        RejectorDelayMs = rejectorDelayMs;
+        RejectorStatus[rejectorIdx] = 0x0;
+
+        rejectorDelayMs = App_Get_Rejector_Delay_Ms(rejectorIdx);
+        if (rejectorDelayMs == 0x00000000 ||
+            rejectorDelayMs == 0xFFFFFFFF)
+        {
+            App_Save_Rejector_Delay_Ms(REJECTOR_DELAY_MS_DEFAULT, rejectorIdx);
+        }
     }
 
     return true;
@@ -337,11 +341,7 @@ uint8_t Process_Payload(AppsPacket appPacket)
     bool state = false;
     uint8_t rejector = 0;
     uint8_t dataByte = 0;
-    uint8_t statusByte = 0;
-    uint8_t packetLength;
-    uint8_t packetPayload[appPacket.dataLength];
     uint8_t delay_ms;
-    AppsPacket rejectorStatus;
     uint32_t rejectorDelayMs;
 
     switch (appPacket.opcode)
@@ -349,6 +349,7 @@ uint8_t Process_Payload(AppsPacket appPacket)
         case APP_REJECTOR_WRITE_CMD:
             {
                 printf("Opcode - APP_REJECTOR_WRITE\n");
+
                 for (uint8_t byteIdx = 0; byteIdx < appPacket.dataLength; byteIdx++)
                 {
                     dataByte = appPacket.data[byteIdx];
@@ -364,42 +365,22 @@ uint8_t Process_Payload(AppsPacket appPacket)
                             return APP_ERROR_INVALID_PAYLOAD;
                         }
 
-                        App_Rejector_Write(rejector, state);
+                        if (rejector < NUM_REJECTORS)
+                        {
+                            RejectorStatus[rejector] = state;
+                            App_Rejector_Write(rejector, state);
+                        }
                     }
                 }
+
+                Send_Rejector_Status();
                 break;
             }
         case APP_REJECTOR_READ_CMD:
             {
                 printf("Opcode - APP_REJECTOR_READ\n");
-                packetLength = Get_Packet_Length(appPacket.dataLength);
-                uint8_t rejectorStatusPkt[packetLength];
 
-                for (uint8_t byteIdx = 0; byteIdx < appPacket.dataLength; byteIdx++)
-                {
-                    dataByte = appPacket.data[byteIdx];
-                    statusByte = 0x0;
-
-                    for (uint8_t bitIdx = 0; bitIdx < 8; bitIdx++)
-                    {
-                        state = ((dataByte & (0x80 >> bitIdx)) != 0);
-                        rejector = (byteIdx * 8) + bitIdx;
-
-                        if (state)
-                        {
-                            statusByte = statusByte | (App_Rejector_Read(rejector) << (8 - bitIdx));
-                        }
-                    }
-                    packetPayload[byteIdx] = statusByte;
-                }
-
-                rejectorStatus.data = (uint8_t *)packetPayload;
-                rejectorStatus.dataLength = appPacket.dataLength;
-                rejectorStatus.opcode = APP_SEND_REJECTOR_STATUS_IND;
-
-                Encode_Packet(rejectorStatusPkt, rejectorStatus);
-
-                Send_Data_To_TCP_Client(rejectorStatusPkt, sizeof(rejectorStatusPkt));
+                Send_Rejector_Status();
                 break;
             }
         case APP_REJECTOR_WRITE_PULSE_CMD:
@@ -414,7 +395,7 @@ uint8_t Process_Payload(AppsPacket appPacket)
                         state = ((dataByte & (0x80 >> bitIdx)) != 0);
                         rejector = (byteIdx * 8) + bitIdx;
 
-                        delay_ms = App_Get_Rejector_Delay_Ms();
+                        delay_ms = App_Get_Rejector_Delay_Ms(rejector);
 
                         if (delay_ms > 0 && state)
                         {
@@ -434,7 +415,7 @@ uint8_t Process_Payload(AppsPacket appPacket)
                 rejectorDelayMs = rejectorDelayMs << 8 | appPacket.data[3];
                 rejectorDelayMs = rejectorDelayMs << 8 | appPacket.data[4];
 
-                App_Save_Rejector_Delay_Ms(rejectorDelayMs);
+                App_Save_Rejector_Delay_Ms(rejectorDelayMs, rejector);
                 break;
             }
         default:
@@ -444,6 +425,45 @@ uint8_t Process_Payload(AppsPacket appPacket)
     }
 
     return PACKET_OK;
+}
+
+void Send_Rejector_Status(void)
+{
+    uint8_t opcode = APP_SEND_REJECTOR_STATUS_IND;
+    uint8_t dataLength = Get_Payload_Length(opcode);
+
+    AppsPacket rejectorPacket;
+
+    uint8_t packetPayload[dataLength];
+    uint8_t statusByte = 0x0;
+    uint8_t rejector = 0;
+    uint8_t packetLength = Get_Packet_Length(dataLength);
+    uint8_t rejectorStatusPkt[packetLength];
+
+    for (uint8_t byteIdx = 0; byteIdx < dataLength; byteIdx++)
+    {
+        statusByte = 0x0;
+
+        for (uint8_t bitIdx = 0; bitIdx < 8; bitIdx++)
+        {
+            rejector = (byteIdx * 8) + bitIdx;
+
+            if (rejector < NUM_REJECTORS)
+            {
+                statusByte = statusByte |  RejectorStatus[rejector] << (8 - bitIdx);
+            }
+        }
+
+        packetPayload[byteIdx] = statusByte;
+    }
+
+    rejectorPacket.opcode = opcode;
+    rejectorPacket.dataLength = dataLength;
+    rejectorPacket.data = (uint8_t *)packetPayload;
+
+    Encode_Packet(rejectorStatusPkt, rejectorPacket);
+
+    Send_Data_To_TCP_Client(rejectorStatusPkt, sizeof(rejectorStatusPkt));
 }
 
 RET_StatusTypeDef Send_Data_To_TCP_Client(uint8_t *data, uint32_t dataLen)
@@ -457,12 +477,12 @@ RET_StatusTypeDef Send_Data_To_TCP_Client(uint8_t *data, uint32_t dataLen)
     return RET_ERROR;
 }
 
-void App_Save_Rejector_Delay_Ms(uint32_t delayMs)
+void App_Save_Rejector_Delay_Ms(uint32_t delayMs, uint8_t rejectorIdx)
 {
-    HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, REJECTOR_DELAY_ADDR, delayMs);
+    HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, REJECTOR_DELAY_ADDR(rejectorIdx), delayMs);
 }
 
-uint32_t App_Get_Rejector_Delay_Ms(void)
+uint32_t App_Get_Rejector_Delay_Ms(uint8_t rejectorIdx)
 {
-    return *(uint32_t *)REJECTOR_DELAY_ADDR;
+    return *(uint32_t *)(REJECTOR_DELAY_ADDR(rejectorIdx));
 }
