@@ -51,6 +51,10 @@ void W5500_WriteBuff(uint8_t *buff, uint16_t len)
 
 void App_Rejector_Write(uint8_t rejectorIdx, bool state)
 {
+#ifdef UNIT_TEST_EN
+    UTX_Set_Rejector_Write_Status(rejectorIdx, state);
+#endif
+
     switch (rejectorIdx)
     {
         case 0:
@@ -67,6 +71,10 @@ void App_Rejector_Write(uint8_t rejectorIdx, bool state)
 
 bool App_Rejector_Read(uint8_t rejectorIdx)
 {
+#ifdef UNIT_TEST_EN
+    return UTX_Get_Rejector_Status(rejectorIdx);
+#endif
+
     switch (rejectorIdx)
     {
         case 0:
@@ -170,6 +178,11 @@ bool Init_W5500(void)
             App_Save_Rejector_Delay_Ms(REJECTOR_DELAY_MS_DEFAULT, rejectorIdx);
         }
     }
+
+#ifdef UNIT_TEST_EN
+    UTX_Rejector_Write_Status_Init();
+    UTX_Rejector_Status_Init();
+#endif
 
     return true;
 }
@@ -374,7 +387,7 @@ uint8_t Process_Payload(AppsPacket appPacket)
                         state = ((dataByte & (0x80 >> bitIdx)) != 0);
                         rejector = (byteIdx * 8) + bitIdx;
 
-                        if (state == App_Rejector_Read(rejector))
+                        if (state == REJECTOR_ON && state == App_Rejector_Read(rejector))
                         {
                             printf("Invalid payload - Rejector already in same state\n");
                             return APP_ERROR_INVALID_PAYLOAD;
@@ -477,7 +490,7 @@ void Send_Rejector_Status(void)
 
             if (rejector < NUM_REJECTORS)
             {
-                statusByte = statusByte |  RejectorStatus[rejector] << (8 - bitIdx);
+                statusByte = statusByte |  RejectorStatus[rejector] << (7 - bitIdx);
             }
         }
 
@@ -489,6 +502,10 @@ void Send_Rejector_Status(void)
     rejectorPacket.data = (uint8_t *)packetPayload;
 
     Encode_Packet(rejectorStatusPkt, rejectorPacket);
+
+#ifdef UNIT_TEST_EN
+    memcpy(UTXrejectorStatusPacket, rejectorStatusPkt, sizeof(rejectorStatusPkt));
+#endif
 
     Send_Data_To_TCP_Client(rejectorStatusPkt, sizeof(rejectorStatusPkt));
 }
@@ -516,7 +533,7 @@ uint32_t App_Get_Rejector_Delay_Ms(uint8_t rejectorIdx)
     return *(uint32_t *)(REJECTOR_DELAY_ADDR(rejectorIdx));
 }
 
-void App_Rejector_Timer_Process()
+void App_Rejector_Timer_Process(void)
 {
     if (Timer_GetStatus(&rejectorPluseSWTimer) == TIMER_ELAPSED)
     {
@@ -526,3 +543,57 @@ void App_Rejector_Timer_Process()
         Timer_Stop(&rejectorPluseSWTimer);
     }
 }
+
+#ifdef UNIT_TEST_EN
+uint8_t UTXRejectorStatus[NUM_REJECTORS];
+uint8_t UTXRejectorWriteStatus[NUM_REJECTORS];
+uint8_t UTXrejectorStatusPacket[(NUM_REJECTORS / 8) + 6];
+
+void UTX_Set_Rejector_Status(uint8_t rejector, uint8_t status)
+{
+    UTXRejectorStatus[rejector] = status;
+}
+
+uint8_t UTX_Get_Rejector_Status(uint8_t rejector)
+{
+    return UTXRejectorStatus[rejector];
+}
+
+void UTX_Set_Rejector_Write_Status(uint8_t rejector, uint8_t On)
+{
+    if (On == 0x1)
+    {
+        UTXRejectorWriteStatus[rejector] |= 0x1;
+    }
+    else
+    {
+        UTXRejectorWriteStatus[rejector] |= 0x2;
+    }
+}
+
+uint8_t UTX_Get_Rejector_Write_Status(uint8_t rejector)
+{
+    return UTXRejectorWriteStatus[rejector];
+}
+
+void UTX_Rejector_Write_Status_Init(void)
+{
+    for (uint8_t rejectorIdx = 0; rejectorIdx < NUM_REJECTORS; rejectorIdx++)
+    {
+        UTXRejectorWriteStatus[rejectorIdx] = 0x0;
+    }
+}
+
+void UTX_Rejector_Status_Init(void)
+{
+    for (uint8_t rejectorIdx = 0; rejectorIdx < NUM_REJECTORS; rejectorIdx++)
+    {
+        UTXRejectorStatus[rejectorIdx] = 0x0;
+    }
+}
+
+uint8_t *UTX_Get_Rejector_Status_Packet(void)
+{
+    return UTXrejectorStatusPacket;
+}
+#endif
