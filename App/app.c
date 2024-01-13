@@ -368,7 +368,6 @@ uint8_t Process_Payload(AppsPacket appPacket)
 
                         if (rejector < NUM_REJECTORS)
                         {
-                            RejectorStatus[rejector] = state;
                             App_Rejector_Write(rejector, state);
                         }
                     }
@@ -440,6 +439,11 @@ void Send_Rejector_Status(void)
     uint8_t rejector = 0;
     uint8_t packetLength = Get_Packet_Length(dataLength);
     uint8_t rejectorStatusPkt[packetLength];
+
+    for (uint8_t rejectorIdx = 0; rejectorIdx < NUM_REJECTORS; rejectorIdx++)
+    {
+        RejectorStatus[rejectorIdx] = App_Rejector_Read(rejectorIdx);
+    }
 
     for (uint8_t byteIdx = 0; byteIdx < dataLength; byteIdx++)
     {
