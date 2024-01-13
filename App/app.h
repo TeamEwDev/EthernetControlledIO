@@ -95,5 +95,5 @@ RET_StatusTypeDef Send_Data_To_TCP_Client(uint8_t *data, uint32_t dataLen);
 void App_Save_Rejector_Delay_Ms(uint32_t delayMs, uint8_t rejectorIdx);
 uint32_t App_Get_Rejector_Delay_Ms(uint8_t rejectorIdx);
 void Send_Rejector_Status(void);
-
+void App_Rejector_Timer_Process(void);
 #endif

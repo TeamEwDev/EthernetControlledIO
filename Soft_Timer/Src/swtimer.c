@@ -14,10 +14,11 @@
 /* Private function prototypes -----------------------------------------------*/
 
 
-void Timer_Start(swtimer_t *p_swTimer, uint32_t delay)
+void Timer_Start(swtimer_t *p_swTimer, uint32_t delay, uint32_t io)
 {
     p_swTimer->delay = delay;
     p_swTimer->timeStamp = HAL_GetTick();
+    p_swTimer->io = io;
 }
 
 void Timer_Stop(swtimer_t *p_swTimer)

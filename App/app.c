@@ -7,6 +7,7 @@
 
 #include "app.h"
 #include "stm32f4xx_hal_flash.h"
+#include "swtimer.h"
 
 wiz_NetInfo netInfo =
 {
@@ -25,6 +26,8 @@ wiz_NetTimeout timeout =
 uint8_t buffer[16];      //client sends 8 bytes
 
 uint8_t RejectorStatus[NUM_REJECTORS];
+
+swtimer_t rejectorPluseSWTimer = {0};
 
 void W5500_Select(void)
 {
@@ -181,7 +184,7 @@ void Start_Listening_To_TCP_Client(void)
     while (1)
     {
         ret = socket(CLIENT_SOCKET, Sn_MR_TCP, LISTEN_PORT, SF_TCP_NODELAY);
-
+        App_Rejector_Timer_Process();
         if (ret < 0)
         {
             printf("socket failed{%d}.\n", ret);
@@ -193,7 +196,12 @@ void Start_Listening_To_TCP_Client(void)
         //check initialization
         while (getSn_SR(CLIENT_SOCKET) != SOCK_INIT)
         {
-            HAL_Delay(10);
+            uint8_t delay = 10;
+            while (delay--)
+            {
+                HAL_Delay(1);
+                App_Rejector_Timer_Process();
+            }
         }
 
         printf("listening....\n");
@@ -209,7 +217,12 @@ void Start_Listening_To_TCP_Client(void)
         //check listening status
         while (getSn_SR(CLIENT_SOCKET) == SOCK_LISTEN)
         {
-            HAL_Delay(10);
+            uint8_t delay = 10;
+            while (delay--)
+            {
+                HAL_Delay(1);
+                App_Rejector_Timer_Process();
+            }
         }
 
         if (getSn_SR(CLIENT_SOCKET) == SOCK_ESTABLISHED)
@@ -317,6 +330,7 @@ uint8_t Get_Payload_Length(uint8_t opcode)
     {
         case APP_REJECTOR_WRITE_CMD:
         case APP_REJECTOR_READ_CMD:
+        case APP_SEND_REJECTOR_STATUS_IND:
             {
                 return (NUM_REJECTORS / 8) + 1;
             }
@@ -399,9 +413,17 @@ uint8_t Process_Payload(AppsPacket appPacket)
 
                         if (delay_ms > 0 && state)
                         {
-                            App_Rejector_Write(rejector, REJECTOR_ON);
-                            HAL_Delay(delay_ms);
-                            App_Rejector_Write(rejector, REJECTOR_OFF);
+                            if (Timer_GetStatus(&rejectorPluseSWTimer) == TIMER_STOPPED ||
+                                Timer_GetStatus(&rejectorPluseSWTimer) == TIMER_ELAPSED)
+                            {
+                                Timer_Start(&rejectorPluseSWTimer, delay_ms, rejector);
+                                App_Rejector_Write(rejector, REJECTOR_ON);
+                            }
+                            else
+                            {
+                                printf("Last Pulse Timer is already running\n");
+                                return APP_ERROR_INVALID_PAYLOAD;
+                            }
                         }
                     }
                 }
@@ -487,10 +509,20 @@ void App_Save_Rejector_Delay_Ms(uint32_t delayMs, uint8_t rejectorIdx)
     HAL_FLASH_Unlock();
     HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, REJECTOR_DELAY_ADDR(rejectorIdx), delayMs);
     HAL_FLASH_Lock();
-
 }
 
 uint32_t App_Get_Rejector_Delay_Ms(uint8_t rejectorIdx)
 {
     return *(uint32_t *)(REJECTOR_DELAY_ADDR(rejectorIdx));
+}
+
+void App_Rejector_Timer_Process()
+{
+    if (Timer_GetStatus(&rejectorPluseSWTimer) == TIMER_ELAPSED)
+    {
+        printf("Delay Ended ForRjector Timer : %ld\n",  HAL_GetTick() - rejectorPluseSWTimer.timeStamp);
+        App_Rejector_Write(0, REJECTOR_OFF);
+        Send_Rejector_Status();
+        Timer_Stop(&rejectorPluseSWTimer);
+    }
 }

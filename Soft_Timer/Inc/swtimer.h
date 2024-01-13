@@ -30,13 +30,13 @@ typedef struct
 {
     uint32_t timeStamp;
     uint32_t delay;
+    uint32_t io;
 } swtimer_t;
 
 /* Exported functions --------------------------------------------------------*/
-void Timer_Start(swtimer_t *p_timer, uint32_t delay);
-void Timer_Stop(swtimer_t *p_timer);
+void Timer_Start(swtimer_t *p_swTimer, uint32_t delay, uint32_t io);
 swtimer_status_t Timer_GetStatus(swtimer_t *p_timer);
-
+void Timer_Stop(swtimer_t *p_swTimer);
 #ifdef  __cplusplus
 }
 #endif
