@@ -9,6 +9,7 @@
 #include "stm32f4xx_hal_flash.h"
 #include "swtimer.h"
 #include "stm32f4xx_hal_flash_ex.h"
+#include "flash_if.h"
 
 uint32_t RejectorDelayMs[NUM_REJECTORS];
 
@@ -546,7 +547,7 @@ RET_StatusTypeDef Send_Data_To_TCP_Client(uint8_t *data, uint32_t dataLen)
 void App_Save_Rejector_Delay_Ms(uint32_t delayMs, uint8_t rejectorIdx)
 {
     HAL_FLASH_Unlock();
-    HAL_FLASHEx_Erase(&EraseInitStruct, 0);
+    FLASH_If_Erase(REJECTOR_DELAY_ADDR(rejectorIdx));
     HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, REJECTOR_DELAY_ADDR(rejectorIdx), delayMs);
     HAL_FLASH_Lock();
 

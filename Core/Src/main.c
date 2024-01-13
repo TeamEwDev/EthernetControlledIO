@@ -108,6 +108,7 @@ int main(void)
   MX_SPI1_Init();
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
+  HAL_Delay(5000);
 #ifdef UNIT_TEST_EN
   unitTestCases(NULL);
 #endif
