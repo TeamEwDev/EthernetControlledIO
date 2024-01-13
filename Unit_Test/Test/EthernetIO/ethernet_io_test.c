@@ -20,9 +20,10 @@
 void Rejector_Delay_Flash_Read_Write_Test(void)
 {
     uint32_t rejectorDelayMs = 0x23232323;
-    App_Save_Rejector_Delay_Ms(rejectorDelayMs);
+    App_Save_Rejector_Delay_Ms(rejectorDelayMs, 0);
+    uint32_t readRejectorDelayMs = App_Get_Rejector_Delay_Ms(0);
 
-    CU_ASSERT_EQUAL(App_Get_Rejector_Delay_Ms(), rejectorDelayMs);
+    CU_ASSERT_EQUAL(readRejectorDelayMs, rejectorDelayMs);
 }
 
 static CU_TestInfo Ethernet_Io_Tests[] =

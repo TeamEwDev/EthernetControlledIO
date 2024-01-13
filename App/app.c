@@ -69,7 +69,8 @@ bool App_Rejector_Read(uint8_t rejectorIdx)
         case 0:
             {
                 printf("Rejector 1 Read\n");
-                return HAL_GPIO_ReadPin(REJECTOR_INPUT_24V_GPIO_Port, REJECTOR_INPUT_24V_Pin);
+                /* Current Hardware Configuration has this pin active low */
+                return !HAL_GPIO_ReadPin(REJECTOR_INPUT_24V_GPIO_Port, REJECTOR_INPUT_24V_Pin);
             }
         default:
             {
@@ -479,7 +480,10 @@ RET_StatusTypeDef Send_Data_To_TCP_Client(uint8_t *data, uint32_t dataLen)
 
 void App_Save_Rejector_Delay_Ms(uint32_t delayMs, uint8_t rejectorIdx)
 {
+    HAL_FLASH_Unlock();
     HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, REJECTOR_DELAY_ADDR(rejectorIdx), delayMs);
+    HAL_FLASH_Lock();
+
 }
 
 uint32_t App_Get_Rejector_Delay_Ms(uint8_t rejectorIdx)

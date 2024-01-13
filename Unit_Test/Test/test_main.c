@@ -24,8 +24,7 @@ void unitTestCases(void *argument)
     for (;;)
     {
         unit_test_case();
-        HAL_Delay(1);
-
+        while (1);
     }
     /* USER CODE END unitTestCases */
 }
