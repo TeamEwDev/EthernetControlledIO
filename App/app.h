@@ -96,6 +96,7 @@ void App_Save_Rejector_Delay_Ms(uint32_t delayMs, uint8_t rejectorIdx);
 uint32_t App_Get_Rejector_Delay_Ms(uint8_t rejectorIdx);
 void Send_Rejector_Status(void);
 void App_Rejector_Timer_Process(void);
+void App_Rejector_Delay_Timer_Config(uint32_t delay_ms);
 
 #ifdef UNIT_TEST_EN
 extern uint8_t UTXrejectorStatusPacket[(NUM_REJECTORS / 8) + 6];

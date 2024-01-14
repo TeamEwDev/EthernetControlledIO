@@ -12,8 +12,7 @@
 #include "flash_if.h"
 
 uint32_t RejectorDelayMs[NUM_REJECTORS];
-
-FLASH_EraseInitTypeDef EraseInitStruct;
+extern TIM_HandleTypeDef htim10;
 
 wiz_NetInfo netInfo =
 {
@@ -178,10 +177,6 @@ bool Init_W5500(void)
     printf("PHY conf.by = {%d}, conf.mode={%d}, conf.speed={%d}, conf.duplex={%d}\n",
            phyConf.by, phyConf.mode, phyConf.speed, phyConf.duplex);
 
-    EraseInitStruct.TypeErase   = FLASH_TYPEERASE_SECTORS;
-    EraseInitStruct.Sector      = 6U;
-    EraseInitStruct.NbSectors   = 1;
-    EraseInitStruct.VoltageRange = FLASH_VOLTAGE_RANGE_4;
     for (uint8_t rejectorIdx = 0; rejectorIdx < NUM_REJECTORS; rejectorIdx++)
     {
         RejectorStatus[rejectorIdx] = 0x0;
@@ -216,7 +211,7 @@ void Start_Listening_To_TCP_Client(void)
     while (1)
     {
         ret = socket(CLIENT_SOCKET, Sn_MR_TCP, LISTEN_PORT, SF_TCP_NODELAY);
-        App_Rejector_Timer_Process();
+
         if (ret < 0)
         {
             printf("socket failed{%d}.\n", ret);
@@ -228,12 +223,7 @@ void Start_Listening_To_TCP_Client(void)
         //check initialization
         while (getSn_SR(CLIENT_SOCKET) != SOCK_INIT)
         {
-            uint8_t delay = 10;
-            while (delay--)
-            {
-                HAL_Delay(1);
-                App_Rejector_Timer_Process();
-            }
+            HAL_Delay(10);
         }
 
         printf("listening....\n");
@@ -249,12 +239,7 @@ void Start_Listening_To_TCP_Client(void)
         //check listening status
         while (getSn_SR(CLIENT_SOCKET) == SOCK_LISTEN)
         {
-            uint8_t delay = 10;
-            while (delay--)
-            {
-                HAL_Delay(1);
-                App_Rejector_Timer_Process();
-            }
+            HAL_Delay(10);
         }
 
         if (getSn_SR(CLIENT_SOCKET) == SOCK_ESTABLISHED)
@@ -452,6 +437,7 @@ uint8_t Process_Payload(AppsPacket appPacket)
                                 Timer_GetStatus(&rejectorPluseSWTimer) == TIMER_ELAPSED)
                             {
                                 Timer_Start(&rejectorPluseSWTimer, delay_ms, rejector);
+                                App_Rejector_Delay_Timer_Config(delay_ms);
                                 App_Rejector_Write(rejector, REJECTOR_ON);
                                 Send_Rejector_Status();
                             }
@@ -561,12 +547,36 @@ uint32_t App_Get_Rejector_Delay_Ms(uint8_t rejectorIdx)
 
 void App_Rejector_Timer_Process(void)
 {
-    if (Timer_GetStatus(&rejectorPluseSWTimer) == TIMER_ELAPSED)
+    printf("Delay Ended For Rejector Timer : %ld\n",  HAL_GetTick() - rejectorPluseSWTimer.timeStamp);
+    App_Rejector_Write(0, REJECTOR_OFF);
+    Send_Rejector_Status();
+}
+
+void App_Rejector_Delay_Timer_Config(uint32_t delay_ms)
+{
+    /* Calculate prescaler value */
+    uint32_t uwTimclock;
+    uint32_t uwPrescalerValue;
+    uwTimclock = HAL_RCC_GetPCLK2Freq();
+    uwPrescalerValue = (uint32_t)((uwTimclock / 1000000U) - 1U);
+
+    /* Configure timer settings */
+    htim10.Instance = TIM10;
+    htim10.Init.Prescaler = uwPrescalerValue;
+    htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
+    htim10.Init.Period = (delay_ms * 1000U) - 1U;  // Convert delay to microseconds
+    htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+
+    /* Initialize timer */
+    if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
     {
-        printf("Delay Ended ForRjector Timer : %ld\n",  HAL_GetTick() - rejectorPluseSWTimer.timeStamp);
-        App_Rejector_Write(0, REJECTOR_OFF);
-        Send_Rejector_Status();
-        Timer_Stop(&rejectorPluseSWTimer);
+        Error_Handler();
+    }
+
+    /* Start the timer */
+    if (HAL_TIM_Base_Start_IT(&htim10) != HAL_OK)
+    {
+        Error_Handler();
     }
 }
 
