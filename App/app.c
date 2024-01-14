@@ -5,16 +5,22 @@
  */
 /* Includes -------------------------------------------------------------------*/
 
+/*************************************************************
+ *                        INCLUDES                           *
+ *************************************************************/
+
 #include "app.h"
 #include "stm32f4xx_hal_flash.h"
-#include "swtimer.h"
 #include "stm32f4xx_hal_flash_ex.h"
 #include "flash_if.h"
 
+/*************************************************************
+ *                   GLOBAL VARIABLES                        *
+ *************************************************************/
 uint32_t RejectorDelayMs[NUM_REJECTORS];
 extern TIM_HandleTypeDef htim10;
 
-wiz_NetInfo netInfo =
+wiz_NetInfo NetInfo =
 {
     .mac = { 0x00, 0x08, 0xdc, 0xab, 0xcd, 0xef },
     .ip = { 192, 168, 1, 180 },
@@ -22,18 +28,18 @@ wiz_NetInfo netInfo =
     .gw = { 192, 168, 1, 1 }
 };
 
-wiz_NetTimeout timeout =
+wiz_NetTimeout Timeout =
 {
     .retry_cnt = 3,         //RCR = 3
     .time_100us = 5000
 };    //500ms
 
-uint8_t buffer[16];      //client sends 8 bytes
-
+uint8_t Buffer[16];      //client sends 8 bytes
 uint8_t RejectorStatus[NUM_REJECTORS];
 
-swtimer_t rejectorPluseSWTimer = {0};
-
+/*************************************************************
+ *                       FUNCTION                            *
+ *************************************************************/
 void W5500_Select(void)
 {
     HAL_GPIO_WritePin(SPI1_NSS_W5500_GPIO_Port, SPI1_NSS_W5500_Pin, GPIO_PIN_RESET);
@@ -113,7 +119,7 @@ bool NetworkInit_W5500(void)
 {
     wiz_NetInfo tmpInfo;
     wiz_NetTimeout tmpTimeout;
-    wizchip_setnetinfo(&netInfo);
+    wizchip_setnetinfo(&NetInfo);
 
     //get network information
     wizchip_getnetinfo(&tmpInfo);
@@ -123,20 +129,20 @@ bool NetworkInit_W5500(void)
            tmpInfo.sn[0], tmpInfo.sn[1], tmpInfo.sn[2], tmpInfo.sn[3],
            LISTEN_PORT);
 
-    if (tmpInfo.mac[0] != netInfo.mac[0] ||
-        tmpInfo.mac[1] != netInfo.mac[1] ||
-        tmpInfo.mac[2] != netInfo.mac[2] ||
-        tmpInfo.mac[3] != netInfo.mac[3])
+    if (tmpInfo.mac[0] != NetInfo.mac[0] ||
+        tmpInfo.mac[1] != NetInfo.mac[1] ||
+        tmpInfo.mac[2] != NetInfo.mac[2] ||
+        tmpInfo.mac[3] != NetInfo.mac[3])
     {
         printf("wizchip_getnetinfo failed.\n");
         return false;
     }
 
-    //set timeout
-    ctlnetwork(CN_SET_TIMEOUT, (void *)&timeout);
+    //set Timeout
+    ctlnetwork(CN_SET_TIMEOUT, (void *)&Timeout);
     ctlnetwork(CN_GET_TIMEOUT, (void *)&tmpTimeout);
 
-    if (tmpTimeout.retry_cnt != timeout.retry_cnt || tmpTimeout.time_100us != timeout.time_100us)
+    if (tmpTimeout.retry_cnt != Timeout.retry_cnt || tmpTimeout.time_100us != Timeout.time_100us)
     {
         printf("ctlnetwork(CN_SET_TIMEOUT) failed.\n");
         return false;
@@ -254,7 +260,7 @@ void Start_Listening_To_TCP_Client(void)
                    remoteIP[0], remoteIP[1], remoteIP[2], remoteIP[3], remotePort);
 
             //receive data
-            ret = recv(CLIENT_SOCKET, buffer, sizeof(buffer));
+            ret = recv(CLIENT_SOCKET, Buffer, sizeof(Buffer));
             if (ret < SOCKERR_SOCKSTATUS)
             {
                 printf("recv failed.{%d}\n", ret);
@@ -262,9 +268,9 @@ void Start_Listening_To_TCP_Client(void)
                 continue;
             }
 
-            printf("received...\n %s", buffer);
+            printf("received...\n %s", Buffer);
 
-            uint8_t errCode = Decode_Packet(buffer, ret, &appPacket);
+            uint8_t errCode = Decode_Packet(Buffer, ret, &appPacket);
 
             errCode = Validate_Packet(errCode, appPacket, ret);
 
@@ -433,12 +439,9 @@ uint8_t Process_Payload(AppsPacket appPacket)
 
                         if (delay_ms > 0 && state)
                         {
-
-                            Timer_Start(&rejectorPluseSWTimer, delay_ms, rejector);
                             App_Rejector_Delay_Timer_Config(delay_ms);
                             App_Rejector_Write(rejector, REJECTOR_ON);
                             Send_Rejector_Status();
-
                         }
                     }
                 }
@@ -540,7 +543,6 @@ uint32_t App_Get_Rejector_Delay_Ms(uint8_t rejectorIdx)
 
 void App_Rejector_Timer_Process(void)
 {
-    printf("Delay Ended For Rejector Timer : %ld\n",  HAL_GetTick() - rejectorPluseSWTimer.timeStamp);
     App_Rejector_Write(0, REJECTOR_OFF);
 }
 
