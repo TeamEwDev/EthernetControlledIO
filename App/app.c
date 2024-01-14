@@ -433,19 +433,12 @@ uint8_t Process_Payload(AppsPacket appPacket)
 
                         if (delay_ms > 0 && state)
                         {
-                            if (Timer_GetStatus(&rejectorPluseSWTimer) == TIMER_STOPPED ||
-                                Timer_GetStatus(&rejectorPluseSWTimer) == TIMER_ELAPSED)
-                            {
-                                Timer_Start(&rejectorPluseSWTimer, delay_ms, rejector);
-                                App_Rejector_Delay_Timer_Config(delay_ms);
-                                App_Rejector_Write(rejector, REJECTOR_ON);
-                                Send_Rejector_Status();
-                            }
-                            else
-                            {
-                                printf("Last Pulse Timer is already running\n");
-                                return APP_ERROR_INVALID_PAYLOAD;
-                            }
+
+                            Timer_Start(&rejectorPluseSWTimer, delay_ms, rejector);
+                            App_Rejector_Delay_Timer_Config(delay_ms);
+                            App_Rejector_Write(rejector, REJECTOR_ON);
+                            Send_Rejector_Status();
+
                         }
                     }
                 }
@@ -521,10 +514,10 @@ void Send_Rejector_Status(void)
 
 RET_StatusTypeDef Send_Data_To_TCP_Client(uint8_t *data, uint32_t dataLen)
 {
-    if (getSn_SR(CLIENT_SOCKET) == SOCK_ESTABLISHED)
+    uint32_t status = getSn_SR(CLIENT_SOCKET);
+    if (status == SOCK_ESTABLISHED || status == SOCK_CLOSE_WAIT || status == SOCK_LISTEN)
     {
         send(CLIENT_SOCKET, data, dataLen);
-        HAL_Delay(100);
         return RET_OK;
     }
     return RET_ERROR;
@@ -549,7 +542,6 @@ void App_Rejector_Timer_Process(void)
 {
     printf("Delay Ended For Rejector Timer : %ld\n",  HAL_GetTick() - rejectorPluseSWTimer.timeStamp);
     App_Rejector_Write(0, REJECTOR_OFF);
-    Send_Rejector_Status();
 }
 
 void App_Rejector_Delay_Timer_Config(uint32_t delay_ms)
@@ -562,9 +554,9 @@ void App_Rejector_Delay_Timer_Config(uint32_t delay_ms)
 
     /* Configure timer settings */
     htim10.Instance = TIM10;
-    htim10.Init.Prescaler = uwPrescalerValue;
+    htim10.Init.Prescaler = uwPrescalerValue * 1000;
     htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
-    htim10.Init.Period = (delay_ms * 1000U) - 1U;  // Convert delay to microseconds
+    htim10.Init.Period = delay_ms; // Convert delay to microseconds
     htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 
     /* Initialize timer */
@@ -573,6 +565,8 @@ void App_Rejector_Delay_Timer_Config(uint32_t delay_ms)
         Error_Handler();
     }
 
+    //TIM10->SR &= ~TIM_SR_UIF;
+    __HAL_TIM_CLEAR_FLAG(&htim10, TIM_IT_UPDATE);
     /* Start the timer */
     if (HAL_TIM_Base_Start_IT(&htim10) != HAL_OK)
     {

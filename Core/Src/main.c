@@ -84,8 +84,6 @@ static void MX_TIM10_Init(void);
   * @brief  The application entry point.
   * @retval int
   */
-uint32_t timer10 = 0x0;
-
 int main(void)
 {
   /* USER CODE BEGIN 1 */
@@ -114,7 +112,7 @@ int main(void)
   MX_USB_DEVICE_Init();
   MX_TIM10_Init();
   /* USER CODE BEGIN 2 */
-  HAL_Delay(5000);
+  HAL_Delay(3000);
 
 #ifdef UNIT_TEST_EN
   unitTestCases(NULL);
@@ -240,18 +238,15 @@ static void MX_TIM10_Init(void)
   TIM_OC_InitTypeDef sConfigOC = {0};
 
   /* USER CODE BEGIN TIM10_Init 1 */
-  htim10.Init.Prescaler = uwPrescalerValue;
+  htim10.Init.Prescaler = uwPrescalerValue*1000;
   htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim10.Init.Period = (1000000U / 1000U) - 1U;
   htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   /* USER CODE END TIM10_Init 1 */
   htim10.Instance = TIM10;
-  //htim10.Init.Prescaler = 0;
-  //htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
-  //htim10.Init.Period = 65535;
-  htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  //htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
+
+   htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+   if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
   {
     Error_Handler();
   }
