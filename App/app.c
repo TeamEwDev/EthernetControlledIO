@@ -13,6 +13,7 @@
 #include "stm32f4xx_hal_flash.h"
 #include "stm32f4xx_hal_flash_ex.h"
 #include "flash_if.h"
+#include "app.h"
 
 /*************************************************************
  *                   GLOBAL VARIABLES                        *
@@ -22,8 +23,8 @@ extern TIM_HandleTypeDef htim10;
 
 wiz_NetInfo NetInfo =
 {
-    .mac = { 0x00, 0x08, 0xdc, 0xab, 0xcd, 0xef },
-    .ip = { 192, 168, 1, 180 },
+    .mac = { 0x00, 0x09, 0xdb, 0xab, 0xcd, 0xef },
+    .ip = { 192, 168, 1, 12 },
     .sn = { 255, 255, 255, 0 },
     .gw = { 192, 168, 1, 1 }
 };
@@ -33,6 +34,7 @@ wiz_NetTimeout Timeout =
     .retry_cnt = 3,         //RCR = 3
     .time_100us = 5000
 };    //500ms
+
 
 uint8_t Buffer[16];      //client sends 8 bytes
 uint8_t RejectorStatus[NUM_REJECTORS];
@@ -70,7 +72,7 @@ void App_Rejector_Write(uint8_t rejectorIdx, bool state)
     {
         case 0:
             {
-                printf("Rejector 1 Write : Status - %d\n", state);
+                APP_PRINT("Rejector 1 Write : Status - %d\n", state);
                 HAL_GPIO_WritePin(REJECTOR_OUTPUT_24V_GPIO_Port, REJECTOR_OUTPUT_24V_Pin, state);
             }
         default:
@@ -90,7 +92,7 @@ bool App_Rejector_Read(uint8_t rejectorIdx)
     {
         case 0:
             {
-                printf("Rejector 1 Read\n");
+                APP_PRINT("Rejector 1 Read\n");
                 /* Current Hardware Configuration has this pin active low */
                 return !HAL_GPIO_ReadPin(REJECTOR_INPUT_24V_GPIO_Port, REJECTOR_INPUT_24V_Pin);
             }
@@ -123,18 +125,18 @@ bool NetworkInit_W5500(void)
 
     //get network information
     wizchip_getnetinfo(&tmpInfo);
-    printf("IP: %03d.%03d.%03d.%03d\nGW: %03d.%03d.%03d.%03d\nNet: %03d.%03d.%03d.%03d\nPort : %d\n",
-           tmpInfo.ip[0], tmpInfo.ip[1], tmpInfo.ip[2], tmpInfo.ip[3],
-           tmpInfo.gw[0], tmpInfo.gw[1], tmpInfo.gw[2], tmpInfo.gw[3],
-           tmpInfo.sn[0], tmpInfo.sn[1], tmpInfo.sn[2], tmpInfo.sn[3],
-           LISTEN_PORT);
+    APP_PRINT("IP: %03d.%03d.%03d.%03d\nGW: %03d.%03d.%03d.%03d\nNet: %03d.%03d.%03d.%03d\nPort : %d\n",
+              tmpInfo.ip[0], tmpInfo.ip[1], tmpInfo.ip[2], tmpInfo.ip[3],
+              tmpInfo.gw[0], tmpInfo.gw[1], tmpInfo.gw[2], tmpInfo.gw[3],
+              tmpInfo.sn[0], tmpInfo.sn[1], tmpInfo.sn[2], tmpInfo.sn[3],
+              LISTEN_PORT);
 
     if (tmpInfo.mac[0] != NetInfo.mac[0] ||
         tmpInfo.mac[1] != NetInfo.mac[1] ||
         tmpInfo.mac[2] != NetInfo.mac[2] ||
         tmpInfo.mac[3] != NetInfo.mac[3])
     {
-        printf("wizchip_getnetinfo failed.\n");
+        APP_PRINT("wizchip_getnetinfo failed.\n");
         return false;
     }
 
@@ -144,7 +146,7 @@ bool NetworkInit_W5500(void)
 
     if (tmpTimeout.retry_cnt != Timeout.retry_cnt || tmpTimeout.time_100us != Timeout.time_100us)
     {
-        printf("ctlnetwork(CN_SET_TIMEOUT) failed.\n");
+        APP_PRINT("ctlnetwork(CN_SET_TIMEOUT) failed.\n");
         return false;
     }
 
@@ -160,28 +162,28 @@ bool Init_W5500(void)
 
     uint32_t rejectorDelayMs = 0;
 
-    printf("\r\ninit() called!\r\n");
+    APP_PRINT("\r\ninit() called!\r\n");
 
     HAL_GPIO_WritePin(RESET_W5500_GPIO_Port, RESET_W5500_Pin, GPIO_PIN_RESET);
     HAL_Delay(500);
     HAL_GPIO_WritePin(RESET_W5500_GPIO_Port, RESET_W5500_Pin, GPIO_PIN_SET);
     HAL_Delay(500);
-    printf("Registering W5500 callbacks...\r\n");
+    APP_PRINT("Registering W5500 callbacks...\r\n");
     reg_wizchip_cs_cbfunc(W5500_Select, W5500_Unselect);
     reg_wizchip_spi_cbfunc(W5500_ReadByte, W5500_WriteByte);
     reg_wizchip_spiburst_cbfunc(W5500_ReadBuff, W5500_WriteBuff);
 
-    printf("Calling wizchip_init()...\r\n");
+    APP_PRINT("Calling wizchip_init()...\r\n");
     uint8_t version = getVERSIONR();
     if (version != 0x04)
     {
-        printf("getVERSIONR returns wrong version!\n");
+        APP_PRINT("getVERSIONR returns wrong version!\n");
         return false;
     }
     wiz_PhyConf phyConf;
     wizphy_getphystat(&phyConf);
-    printf("PHY conf.by = {%d}, conf.mode={%d}, conf.speed={%d}, conf.duplex={%d}\n",
-           phyConf.by, phyConf.mode, phyConf.speed, phyConf.duplex);
+    APP_PRINT("PHY conf.by = {%d}, conf.mode={%d}, conf.speed={%d}, conf.duplex={%d}\n",
+              phyConf.by, phyConf.mode, phyConf.speed, phyConf.duplex);
 
     for (uint8_t rejectorIdx = 0; rejectorIdx < NUM_REJECTORS; rejectorIdx++)
     {
@@ -216,89 +218,97 @@ void Start_Listening_To_TCP_Client(void)
 
     while (1)
     {
+        // Create a new socket for each iteration
         ret = socket(CLIENT_SOCKET, Sn_MR_TCP, LISTEN_PORT, SF_TCP_NODELAY);
 
         if (ret < 0)
         {
-            printf("socket failed{%d}.\n", ret);
+            APP_PRINT("socket failed{%d}.\n", ret);
             close(CLIENT_SOCKET);
             HAL_Delay(100);
             continue;
         }
 
-        //check initialization
+        // Check initialization
         while (getSn_SR(CLIENT_SOCKET) != SOCK_INIT)
         {
             HAL_Delay(10);
         }
 
-        printf("listening....\n");
+        APP_PRINT("listening....\n");
+
+        // Listen for incoming connections
         ret = listen(CLIENT_SOCKET);
         if (ret < 0)
         {
-            printf("listen failed{%d}.\n", ret);
+            APP_PRINT("listen failed{%d}.\n", ret);
             close(CLIENT_SOCKET);
             HAL_Delay(100);
             continue;
         }
 
-        //check listening status
+        // Check listening status
         while (getSn_SR(CLIENT_SOCKET) == SOCK_LISTEN)
         {
-            HAL_Delay(10);
+            HAL_Delay(1);
         }
 
-        if (getSn_SR(CLIENT_SOCKET) == SOCK_ESTABLISHED)
+        while (1)
         {
-            //client accepted
-            printf("accepted....\n");
-
-            //get remote information
-            getsockopt(CLIENT_SOCKET, SO_DESTIP, remoteIP);
-            getsockopt(CLIENT_SOCKET, SO_DESTPORT, (uint8_t *)&remotePort);
-            printf("remote IP[PORT]:%03d.%03d.%03d.%03d[%05d]\n",
-                   remoteIP[0], remoteIP[1], remoteIP[2], remoteIP[3], remotePort);
-
-            //receive data
-            ret = recv(CLIENT_SOCKET, Buffer, sizeof(Buffer));
-            if (ret < SOCKERR_SOCKSTATUS)
+            // Check if a client is connected
+            if (getSn_SR(CLIENT_SOCKET) == SOCK_ESTABLISHED)
             {
-                printf("recv failed.{%d}\n", ret);
-                close(CLIENT_SOCKET); //unexpected close
-                continue;
-            }
+                // Client accepted
+                APP_PRINT("accepted....\n");
 
-            printf("received...\n %s", Buffer);
+                // Get remote information
+                getsockopt(CLIENT_SOCKET, SO_DESTIP, remoteIP);
+                getsockopt(CLIENT_SOCKET, SO_DESTPORT, (uint8_t *)&remotePort);
+                APP_PRINT("remote IP[PORT]:%03d.%03d.%03d.%03d[%05d]\n",
+                          remoteIP[0], remoteIP[1], remoteIP[2], remoteIP[3], remotePort);
 
-            uint8_t errCode = Decode_Packet(Buffer, ret, &appPacket);
-
-            errCode = Validate_Packet(errCode, appPacket, ret);
-
-            if (errCode == PACKET_OK)
-            {
-                printf("decoded packet...\n opcode - %d \n dataLength - %d \n Data - ",
-                       appPacket.opcode,
-                       appPacket.dataLength);
-
-                for (uint8_t byteIdx = 0; byteIdx < appPacket.dataLength; byteIdx++)
+                // Receive data
+                ret = recv(CLIENT_SOCKET, Buffer, sizeof(Buffer));
+                if (ret < SOCKERR_SOCKSTATUS)
                 {
-                    printf("0x%x ", appPacket.data[byteIdx]);
+                    APP_PRINT("recv failed.{%d}\n", ret);
+                    close(CLIENT_SOCKET); // Unexpected close
+                    break; // Exit the inner loop and restart listening
                 }
 
-                printf("\n");
-                errCode = Process_Payload(appPacket);
-            }
+                APP_PRINT("received...\n %s", Buffer);
 
-            Send_Confirmation(errCode);
+                uint8_t errCode = Decode_Packet(Buffer, ret, &appPacket);
+
+                errCode = Validate_Packet(errCode, appPacket, ret);
+
+                if (errCode == PACKET_OK)
+                {
+                    APP_PRINT("decoded packet...\n opcode - %d \n dataLength - %d \n Data - ",
+                              appPacket.opcode,
+                              appPacket.dataLength);
+
+                    for (uint8_t byteIdx = 0; byteIdx < appPacket.dataLength; byteIdx++)
+                    {
+                        APP_PRINT("0x%x ", appPacket.data[byteIdx]);
+                    }
+
+                    APP_PRINT("\n");
+                    errCode = Process_Payload(appPacket);
+                }
+                Send_Confirmation(errCode);
+            }
+            else
+            {
+                // No client connected, exit the inner loop and restart listening
+                break;
+            }
         }
-        else
-        {
-            printf("getSn_SR() != SOCKET_ESTABLISHED.\n");
-        }
+
+        // Close socket after processing the client
+        APP_PRINT("closed...\n");
+        close(CLIENT_SOCKET);
     }
-    //close socket
-    printf("closed...\n");
-    close(CLIENT_SOCKET);
 }
 
 uint8_t Validate_Packet(uint8_t status, AppsPacket appPacket, uint8_t recvLength)
@@ -313,7 +323,7 @@ uint8_t Validate_Packet(uint8_t status, AppsPacket appPacket, uint8_t recvLength
 
         if (recvLength != expectedPacketLength)
         {
-            printf("Invalid packet length received : Expected - %d, Received - %d", expectedPacketLength, recvLength);
+            APP_PRINT("Invalid packet length received : Expected - %d, Received - %d", expectedPacketLength, recvLength);
             return PACKET_ERROR_INVALID_PAYLOAD_LENGTH;
         }
 
@@ -322,7 +332,7 @@ uint8_t Validate_Packet(uint8_t status, AppsPacket appPacket, uint8_t recvLength
             appPacket.opcode == APP_REJECTOR_CNF ||
             appPacket.opcode == APP_SEND_REJECTOR_STATUS_IND)
         {
-            printf("Invalid opcode received");
+            APP_PRINT("Invalid opcode received");
             return APP_ERROR_INVALID_OPCODE;
         }
     }
@@ -389,7 +399,7 @@ uint8_t Process_Payload(AppsPacket appPacket)
     {
         case APP_REJECTOR_WRITE_CMD:
             {
-                printf("Opcode - APP_REJECTOR_WRITE\n");
+                APP_PRINT("Opcode - APP_REJECTOR_WRITE\n");
 
                 for (uint8_t byteIdx = 0; byteIdx < appPacket.dataLength; byteIdx++)
                 {
@@ -402,7 +412,7 @@ uint8_t Process_Payload(AppsPacket appPacket)
 
                         if (state == REJECTOR_ON && state == App_Rejector_Read(rejector))
                         {
-                            printf("Invalid payload - Rejector already in same state\n");
+                            APP_PRINT("Invalid payload - Rejector already in same state\n");
                             return APP_ERROR_INVALID_PAYLOAD;
                         }
 
@@ -418,14 +428,14 @@ uint8_t Process_Payload(AppsPacket appPacket)
             }
         case APP_REJECTOR_READ_CMD:
             {
-                printf("Opcode - APP_REJECTOR_READ\n");
+                APP_PRINT("Opcode - APP_REJECTOR_READ\n");
 
                 Send_Rejector_Status();
                 break;
             }
         case APP_REJECTOR_WRITE_PULSE_CMD:
             {
-                printf("Opcode - APP_REJECTOR_WRITE_PULSE_CMD\n");
+                APP_PRINT("Opcode - APP_REJECTOR_WRITE_PULSE_CMD\n");
                 for (uint8_t byteIdx = 0; byteIdx < appPacket.dataLength; byteIdx++)
                 {
                     dataByte = appPacket.data[byteIdx];
@@ -441,7 +451,7 @@ uint8_t Process_Payload(AppsPacket appPacket)
                         {
                             App_Rejector_Delay_Timer_Config(delay_ms);
                             App_Rejector_Write(rejector, REJECTOR_ON);
-                            Send_Rejector_Status();
+                            //Send_Rejector_Status();
                         }
                     }
                 }

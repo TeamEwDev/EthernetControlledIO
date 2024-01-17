@@ -70,6 +70,7 @@ TIM_HandleTypeDef htim10;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
+static void MX_TIM10_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -109,6 +110,7 @@ int main(void)
     MX_GPIO_Init();
     MX_SPI1_Init();
     MX_USB_DEVICE_Init();
+    MX_TIM10_Init();
     /* USER CODE BEGIN 2 */
     HAL_Delay(3000);
 
@@ -122,6 +124,12 @@ int main(void)
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
+    while (1)
+    {
+        /* USER CODE END WHILE */
+
+        /* USER CODE BEGIN 3 */
+    }
     /* USER CODE END 3 */
 }
 
@@ -209,6 +217,51 @@ static void MX_SPI1_Init(void)
 }
 
 /**
+  * @brief TIM10 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM10_Init(void)
+{
+
+    /* USER CODE BEGIN TIM10_Init 0 */
+
+    /* USER CODE END TIM10_Init 0 */
+
+    TIM_OC_InitTypeDef sConfigOC = {0};
+
+    /* USER CODE BEGIN TIM10_Init 1 */
+
+    /* USER CODE END TIM10_Init 1 */
+    htim10.Instance = TIM10;
+    htim10.Init.Prescaler = 0;
+    htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
+    htim10.Init.Period = 65535;
+    htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    if (HAL_TIM_OC_Init(&htim10) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    sConfigOC.OCMode = TIM_OCMODE_TIMING;
+    sConfigOC.Pulse = 0;
+    sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+    sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+    if (HAL_TIM_OC_ConfigChannel(&htim10, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    /* USER CODE BEGIN TIM10_Init 2 */
+
+    /* USER CODE END TIM10_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -230,6 +283,12 @@ static void MX_GPIO_Init(void)
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(REJECTOR_OUTPUT_24V_GPIO_Port, REJECTOR_OUTPUT_24V_Pin, GPIO_PIN_RESET);
 
+    /*Configure GPIO pin : INT_W5500_Pin */
+    GPIO_InitStruct.Pin = INT_W5500_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    //HAL_GPIO_Init(INT_W5500_GPIO_Port, &GPIO_InitStruct);
+
     /*Configure GPIO pins : RESET_W5500_Pin SPI1_NSS_W5500_Pin */
     GPIO_InitStruct.Pin = RESET_W5500_Pin | SPI1_NSS_W5500_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -249,6 +308,10 @@ static void MX_GPIO_Init(void)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(REJECTOR_OUTPUT_24V_GPIO_Port, &GPIO_InitStruct);
+
+    /* EXTI interrupt init*/
+    HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
     /* USER CODE BEGIN MX_GPIO_Init_2 */
     /* USER CODE END MX_GPIO_Init_2 */

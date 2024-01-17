@@ -98,11 +98,11 @@
 					</folderInfo>
 					<sourceEntries>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="App"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
-						<entry excluding="Ethernet/W5100S|Ethernet/W5200|Ethernet/W5300|Ethernet/W5100|Internet/SNMP|Internet/SNTP|Internet/MQTT|Internet/TFTP|Internet/httpServer|Internet/FTPClient|Internet/FTPServer" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Ethernet_Module_Lib"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Middlewares"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Packet_Encode_Decode"/>
+						<entry excluding="Ethernet/W5100S|Ethernet/W5200|Ethernet/W5300|Ethernet/W5100|Internet/SNMP|Internet/SNTP|Internet/MQTT|Internet/TFTP|Internet/httpServer|Internet/FTPClient|Internet/FTPServer" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Ethernet_Module_Lib"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Middlewares"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="USB_DEVICE"/>
 					</sourceEntries>
 				</configuration>
@@ -202,12 +202,12 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="App"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
 						<entry excluding="Ethernet/W5100S|Ethernet/W5200|Ethernet/W5300|Ethernet/W5100|Internet/SNTP|Internet/MQTT|Internet/TFTP|Internet/FTPServer|Internet/httpServer|Internet/FTPClient" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Ethernet_Module_Lib"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Middlewares"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="App"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Packet_Encode_Decode"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Middlewares"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="USB_DEVICE"/>
 					</sourceEntries>
 				</configuration>
@@ -356,14 +356,14 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="App"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
-						<entry excluding="Ethernet/W5100S|Ethernet/W5200|Ethernet/W5300|Ethernet/W5100|Internet/SNTP|Internet/MQTT|Internet/TFTP|Internet/httpServer|Internet/FTPClient|Internet/FTPServer" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Ethernet_Module_Lib"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Middlewares"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Packet_Encode_Decode"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="USB_DEVICE"/>
 						<entry excluding="Test/Little_FS/little_fs_file_system_test.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Unit_Test"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="App"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Packet_Encode_Decode"/>
+						<entry excluding="Ethernet/W5100S|Ethernet/W5200|Ethernet/W5300|Ethernet/W5100|Internet/SNTP|Internet/MQTT|Internet/TFTP|Internet/httpServer|Internet/FTPClient|Internet/FTPServer" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Ethernet_Module_Lib"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Middlewares"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="USB_DEVICE"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

@@ -39,6 +39,12 @@
 #define REJECTOR_DELAY_ADDR(rejIdx)    (FLASH_END - (3 * (rejIdx + 1))) // This is temporary . To use FS for more rejectors
 #define REJECTOR_DELAY_MS_DEFAULT      10
 #define APP_REJECTOR_DELAY_PAYLOAD_LENGTH   5
+
+#ifdef DEBUG
+#define APP_PRINT(args, ...) printf(args, ##__VA_ARGS__)
+#else
+#define APP_PRINT(args, ...)
+#endif
 /*************************************************************
  *                   GLOBAL VARIABLES                        *
  *************************************************************/

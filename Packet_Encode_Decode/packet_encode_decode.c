@@ -11,6 +11,7 @@
  *************************************************************/
 
 #include "packet_encode_decode.h"
+#include "app.h"
 
 /*************************************************************
  *                   FUNCTION PROTOTYPES                     *
@@ -41,20 +42,20 @@ PACKET_ERROR_CODES Decode_Packet(uint8_t *inputStream, uint8_t length, AppsPacke
     // Check if the packet starts with the correct SOF byte
     if (length < MIN_FRAME_SIZE)
     {
-        printf("Invalid packet format. Unable to decode.\n");
+        APP_PRINT("Invalid packet format. Unable to decode.\n");
         return PACKET_ERROR_INVALID_PAYLOAD_LENGTH;
     }
 
     if (inputStream[SOF_IDX] != PACKET_SOF)
     {
-        printf("Invalid SOF received");
+        APP_PRINT("Invalid SOF received");
         return PACKET_ERROR_INVALID_SOF;
     }
 
     // Check if the packet length is valid
     if (length < dataLengthInput + MIN_FRAME_SIZE)
     {
-        printf("Invalid packet length. Unable to decode.\n");
+        APP_PRINT("Invalid packet length. Unable to decode.\n");
         return PACKET_ERROR_INVALID_PAYLOAD_LENGTH;
     }
 
@@ -67,24 +68,24 @@ PACKET_ERROR_CODES Decode_Packet(uint8_t *inputStream, uint8_t length, AppsPacke
     // Check if received CRC matches calculated CRC
     if (receivedCRC != calculatedCRC)
     {
-        printf("CRC check failed. Unable to decode.\n");
+        APP_PRINT("CRC check failed. Unable to decode.\n");
         return PACKET_ERROR_INVALID_CRC;
     }
 
     // Check if the packet ends with the correct EOF byte
     if (inputStream[dataLengthInput + EOF_IDX] != PACKET_EOF)
     {
-        printf("Invalid packet format. Unable to decode.\n");
+        APP_PRINT("Invalid packet format. Unable to decode.\n");
         return PACKET_ERROR_INVALID_EOF;
     }
 
     // Display the decoded data
-    printf("Decoded data: ");
+    APP_PRINT("Decoded data: ");
     for (int i = 0; i < dataLengthInput; i++)
     {
-        printf("%c", data[i]);
+        APP_PRINT("%c", data[i]);
     }
-    printf("\n");
+    APP_PRINT("\n");
 
     appPacket->opcode     = opcode;
     appPacket->dataLength = dataLengthInput;
